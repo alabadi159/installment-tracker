@@ -135,3 +135,10 @@ This project is currently distributed without a formal license file. If you plan
 ## Notes
 
 This project is designed for local debt and installment tracking with a focused UX. It is ideal for personal finance management and lightweight plan monitoring.
+
+## Screenshoot 
+
+<img width="1059" height="677" alt="image" src="https://github.com/user-attachments/assets/f5879665-5885-4646-ba76-3aef0f93982c" />
+
+<img width="1020" height="670" alt="image" src="https://github.com/user-attachments/assets/536f5541-9079-4079-8ef7-e134eac3f8f6" />
+
