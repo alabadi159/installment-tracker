@@ -1,355 +1,148 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  CreditCard,
-  Calendar,
-  CheckCircle,
-  Clock,
-  PlusCircle,
-  Trash2,
-  Edit3,
-  ChevronDown,
-  ChevronUp,
-  DollarSign,
-  TrendingUp,
-  PieChart,
-  Sun,
-  Moon,
-  Check,
-  AlertTriangle,
-  ShoppingBag,
-  Car,
-  Smartphone,
-  RefreshCw,
-  Search,
-  Sparkles,
-  Database,
-  Cloud,
-  Download,
-  Upload,
-  Settings,
-  HardDrive,
-  Activity,
-  CheckCircle2,
-  X,
-  FileText,
-  ShieldAlert,
-  Server,
-  Layers,
-  Phone
+  CreditCard, Calendar, CheckCircle, Clock, PlusCircle, Trash2, Edit3,
+  ChevronDown, ChevronUp, DollarSign, TrendingUp, PieChart, Sun, Moon, Check,
+  AlertTriangle, ShoppingBag, Car, Smartphone, RefreshCw, Search, Sparkles,
+  Database, Cloud, Download, Upload, HardDrive, Phone, Wallet, Coins, Globe,
+  BarChart3, Activity, ShieldCheck, Home, ArrowUpRight, ArrowDownLeft, Trash, LineChart
 } from 'lucide-react';
 
 // ==========================================
-// 1. SIMULATED SQLITE DB LAYER (INDEXEDDB/LOCALSTORAGE WITH SQL INTERFACE)
+// 1. TRANSLATIONS & CURRENCY CONFIG
 // ==========================================
+const EXCHANGE_RATES = { SAR: 1, USD: 0.2666, AED: 0.979 };
 
-const INITIAL_SAMPLE_INSTALLMENTS = [
-  {
-    id: 'inst-tabby-12',
-    title: 'MacBook Pro M3 Max',
-    provider: 'Tabby',
-    total_amount: 9600,
-    total_splits: 12,
-    start_date: '2026-01-15',
-    category: 'Electronics',
-    notes: 'Purchased from Jarir Bookstore',
-    car_make_model: '',
-    bank_lender: '',
-    balloon_payment: 0,
-    monthly_payment: 800,
-    telecom_operator: '',
-    phone_number: '',
-    main_plan_cost: 0,
-    device_cost: 0,
-    schedule: Array.from({ length: 12 }, (_, index) => {
-      const date = new Date(2026, index, 15);
-      const isPast = index < 9;
-      return {
-        id: `pay-tabby-12-${index + 1}`,
-        installment_id: 'inst-tabby-12',
-        due_date: date.toISOString().split('T')[0],
-        amount: 800,
-        status: isPast ? 'Paid' : 'Pending',
-        paid_date: isPast ? date.toISOString().split('T')[0] : null
-      };
-    })
+const TRANSLATIONS = {
+  en: {
+    app_title: 'AuraWealth Pro',
+    app_subtitle: 'Advanced Debt & Wealth Intelligence OS',
+    dashboard: 'Dashboard', all_plans: 'All Plans', budget_assets: 'Budget & Assets', monthly_forecast: 'Monthly Forecast',
+    total_unpaid: 'Total Unpaid Balance', current_month_due: 'Due Current Month', active_plans: 'Active Plans', completed_plans: 'Completed Plans',
+    search_placeholder: 'Search plans or phone #...',
+    immediate_upcoming: 'Immediate Upcoming Payments',
+    add_plan: 'Add Plan', mark_paid: 'Mark Paid', paid: 'Paid ✓', next_due: 'Next Due',
+    budget_title: 'Income, Rent & Expenses Budget', net_balance: 'Real Net Cash Flow', total_income: 'Total Income', total_expenses: 'Total Expenses & Commitments',
+    add_transaction: 'Add Transaction', desc: 'Description', amount: 'Amount', type: 'Type', income: 'Income', expense: 'Expense',
+    assets_title: 'Wealth & Assets Vault', savings_account: 'Fiat Savings Account', gold_vault: 'Gold Vault (Live Internet 24K)',
+    grams: 'Grams', live_price: 'Live Price (API)', add: 'Add', withdraw: 'Withdraw', buy: 'Buy', sell: 'Sell',
+    sync_db: 'Sync & DB', export_db: 'Export DB', import_db: 'Import DB', clear_db: 'Clear Database',
+    analytics_title: 'Investment Portfolio & Cash Flow Analytics',
+    chart_tab_all: 'All Assets & Cash Flow', chart_tab_debt: 'Debt Commitments', chart_tab_wealth: 'Wealth Growth',
+    cancel: 'Cancel', save_changes: 'Save Changes', create_plan: 'Create Plan', edit_plan: 'Edit Installment Plan',
+    select_provider: 'Select Provider / Category Type', plan_title: 'Plan Title / Item Name *', total_amount: 'Total Amount (SAR) *',
+    category: 'Category', period: 'Period', start_date: 'Start Date', notes_ref: 'Notes / Merchant Reference',
+    warning_title: 'Warning: Clear Database', warning_desc: 'You are about to permanently delete all data (all installments, budget transactions, and assets). This action cannot be undone.',
+    yes_reset: 'Yes, Clear & Reset', close_settings: 'Close Settings', hide_schedule: 'Hide Schedule', view_schedule: 'View Schedule',
+    pay_now: 'Pay Now ✓', search_plans: 'Search installment plans...', loan_start_date: 'Loan Start Date (For existing loans)'
   },
-  {
-    id: 'inst-tamara-6',
-    title: 'Dyson Airwrap & Home Appliance',
-    provider: 'Tamara',
-    total_amount: 3600,
-    total_splits: 6,
-    start_date: '2026-06-01',
-    category: 'Home & Furniture',
-    notes: 'Ordered via eXtra online store',
-    car_make_model: '',
-    bank_lender: '',
-    balloon_payment: 0,
-    monthly_payment: 600,
-    telecom_operator: '',
-    phone_number: '',
-    main_plan_cost: 0,
-    device_cost: 0,
-    schedule: Array.from({ length: 6 }, (_, index) => {
-      const date = new Date(2026, 5 + index, 1);
-      const isPast = index < 4;
-      return {
-        id: `pay-tamara-6-${index + 1}`,
-        installment_id: 'inst-tamara-6',
-        due_date: date.toISOString().split('T')[0],
-        amount: 600,
-        status: isPast ? 'Paid' : 'Pending',
-        paid_date: isPast ? date.toISOString().split('T')[0] : null
-      };
-    })
-  },
-  {
-    id: 'inst-snb-4',
-    title: 'Riyadh to London Vacation Flights',
-    provider: 'SNB Al Ahli Flex Card',
-    total_amount: 4000,
-    total_splits: 4,
-    start_date: '2026-08-10',
-    category: 'Travel',
-    notes: '0% APR Plan - SNB Flex 4 Month Plan',
-    car_make_model: '',
-    bank_lender: '',
-    balloon_payment: 0,
-    monthly_payment: 1000,
-    telecom_operator: '',
-    phone_number: '',
-    main_plan_cost: 0,
-    device_cost: 0,
-    schedule: Array.from({ length: 4 }, (_, index) => {
-      const date = new Date(2026, 7 + index, 10);
-      const isPast = index < 2;
-      return {
-        id: `pay-snb-4-${index + 1}`,
-        installment_id: 'inst-snb-4',
-        due_date: date.toISOString().split('T')[0],
-        amount: 1000,
-        status: isPast ? 'Paid' : 'Pending',
-        paid_date: isPast ? date.toISOString().split('T')[0] : null
-      };
-    })
-  },
-  {
-    id: 'inst-car-1',
-    title: 'Hyundai Tucson 2025 Smart',
-    provider: 'Car Loan',
-    total_amount: 110000,
-    total_splits: 60,
-    start_date: '2025-01-01',
-    category: 'Car Loan',
-    notes: '5-Year Finance Plan with 20% Last Payment',
-    car_make_model: 'Hyundai Tucson 2025',
-    bank_lender: 'Al Rajhi Auto Finance',
-    balloon_payment: 23000,
-    monthly_payment: 1450,
-    telecom_operator: '',
-    phone_number: '',
-    main_plan_cost: 0,
-    device_cost: 0,
-    schedule: Array.from({ length: 60 }, (_, index) => {
-      const date = new Date(2025, index, 1);
-      const isLast = index === 59;
-      const amount = isLast ? 23000 : 1450;
-      const isPast = index < 21;
-      return {
-        id: `pay-car-1-${index + 1}`,
-        installment_id: 'inst-car-1',
-        due_date: date.toISOString().split('T')[0],
-        amount: amount,
-        status: isPast ? 'Paid' : 'Pending',
-        paid_date: isPast ? date.toISOString().split('T')[0] : null
-      };
-    })
-  },
-  {
-    id: 'inst-telecom-1',
-    title: 'STC Postpaid 4 Plan + iPhone 16 Pro',
-    provider: 'Telecom / Phone Contract',
-    total_amount: 11100,
-    total_splits: 24,
-    start_date: '2025-09-20',
-    category: 'Telecom',
-    notes: 'Unlimited Data 5G Line + 256GB Desert Titanium Device',
-    car_make_model: '',
-    bank_lender: '',
-    balloon_payment: 0,
-    monthly_payment: 462.50,
-    telecom_operator: 'STC',
-    phone_number: '+966 50 123 4567',
-    main_plan_cost: 287.50,
-    device_cost: 175.00,
-    schedule: Array.from({ length: 24 }, (_, index) => {
-      const date = new Date(2025, 8 + index, 20);
-      const isPast = index < 13;
-      return {
-        id: `pay-telecom-1-${index + 1}`,
-        installment_id: 'inst-telecom-1',
-        due_date: date.toISOString().split('T')[0],
-        amount: 462.50,
-        status: isPast ? 'Paid' : 'Pending',
-        paid_date: isPast ? date.toISOString().split('T')[0] : null
-      };
-    })
+  ar: {
+    app_title: 'أوراويث برو',
+    app_subtitle: 'نظام إدارة الثروات والديون المتقدم',
+    dashboard: 'لوحة القيادة', all_plans: 'جميع الخطط', budget_assets: 'الميزانية والأصول', monthly_forecast: 'التوقعات الشهرية',
+    total_unpaid: 'إجمالي الرصيد المتبقي', current_month_due: 'مستحقات الشهر الحالي', active_plans: 'الخطط النشطة', completed_plans: 'الخطط المكتملة',
+    search_placeholder: 'ابحث عن الخطط أو رقم الهاتف...',
+    immediate_upcoming: 'المدفوعات القادمة العاجلة',
+    add_plan: 'إضافة خطة', mark_paid: 'تحديد كمدفوع', paid: 'تم الدفع ✓', next_due: 'الاستحقاق القادم',
+    budget_title: 'ميزانية الدخل، الإيجار والمصروفات', net_balance: 'صافي التدفق النقدي الحقيقي', total_income: 'إجمالي الدخل', total_expenses: 'إجمالي المصروفات والالتزامات',
+    add_transaction: 'إضافة معاملة', desc: 'الوصف', amount: 'المبلغ', type: 'النوع', income: 'دخل', expense: 'مصروف',
+    assets_title: 'خزنة الثروة والأصول', savings_account: 'حساب التوفير النقدي', gold_vault: 'خزنة الذهب (مباشر من الإنترنت عيار 24)',
+    grams: 'جرام', live_price: 'السعر الحي (من الإنترنت)', add: 'إضافة', withdraw: 'سحب', buy: 'شراء', sell: 'بيع',
+    sync_db: 'المزامنة وقاعدة البيانات', export_db: 'تصدير البيانات', import_db: 'استيراد البيانات', clear_db: 'تفريغ قاعدة البيانات',
+    analytics_title: 'تحليلات محفظة الاستثمار والتدفقات المالية',
+    chart_tab_all: 'إجمالي الأصول والتدفقات', chart_tab_debt: 'التزامات الديون', chart_tab_wealth: 'نمو الثروة الاستثمارية',
+    cancel: 'إلغاء', save_changes: 'حفظ التعديلات', create_plan: 'إنشاء الخطة', edit_plan: 'تعديل خطة التقسيط',
+    select_provider: 'اختر مزود الخدمة أو نوع الفئة', plan_title: 'عنوان الخطة / اسم المنتج *', total_amount: 'المبلغ الإجمالي (ريال) *',
+    category: 'الفئة', period: 'فترة السداد', start_date: 'تاريخ البدء', notes_ref: 'ملاحظات / مرجع التاجر',
+    warning_title: 'تحذير: تفريغ قاعدة البيانات', warning_desc: 'أنت على وشك مسح جميع البيانات نهائياً (الخطط، الميزانية، والأصول). لا يمكن التراجع عن هذا الإجراء.',
+    yes_reset: 'نعم، مسح وإعادة تعيين', close_settings: 'إغلاق الإعدادات', hide_schedule: 'إخفاء الجدول', view_schedule: 'عرض جدول الأقساط',
+    pay_now: 'ادفع الآن ✓', search_plans: 'بحث في خطط التقسيط...', loan_start_date: 'تاريخ بداية القرض (للقروض القائمة بالفعل)'
   }
-];
+};
 
-// SQLite Simulator class that mimics native SQLite queries / Tauri SQLite bindings
+// ==========================================
+// 2. SIMULATED SQLITE DB LAYER (CLEAN DEFAULT)
+// ==========================================
 class SQLiteDatabase {
   constructor() {
-    this.dbName = 'installment_manager_sqlite.db';
-    this.isInitialized = false;
+    this.dbName = 'aurawealth_pro_sqlite.db';
+    this.budgetDbName = 'aurawealth_pro_budget.db';
+    this.assetsDbName = 'aurawealth_pro_assets.db';
   }
 
   async init() {
     return new Promise((resolve) => {
-      const savedData = localStorage.getItem(this.dbName);
-      if (!savedData) {
-        localStorage.setItem(this.dbName, JSON.stringify(INITIAL_SAMPLE_INSTALLMENTS));
-      }
-      this.isInitialized = true;
+      if (!localStorage.getItem(this.dbName)) localStorage.setItem(this.dbName, JSON.stringify([]));
+      if (!localStorage.getItem(this.budgetDbName)) localStorage.setItem(this.budgetDbName, JSON.stringify([]));
+      if (!localStorage.getItem(this.assetsDbName)) localStorage.setItem(this.assetsDbName, JSON.stringify({ savingsSAR: 0, goldGrams: 0 }));
       resolve(true);
     });
   }
 
   async executeQuery(sql, params = []) {
-    // Simulated SQL query parser & executor over JSON SQLite storage
     const rawData = JSON.parse(localStorage.getItem(this.dbName) || '[]');
-
-    if (sql.startsWith('SELECT ALL FROM installments')) {
-      return rawData;
-    }
-
-    if (sql.startsWith('INSERT INTO installments')) {
-      const [newItem] = params;
-      rawData.unshift(newItem);
-      localStorage.setItem(this.dbName, JSON.stringify(rawData));
-      return { rowsAffected: 1 };
-    }
-
+    if (sql.startsWith('SELECT ALL FROM installments')) return rawData;
+    if (sql.startsWith('INSERT INTO installments')) { rawData.unshift(params[0]); localStorage.setItem(this.dbName, JSON.stringify(rawData)); return { rowsAffected: 1 }; }
     if (sql.startsWith('UPDATE installments')) {
-      const [updatedItem] = params;
-      const index = rawData.findIndex(item => item.id === updatedItem.id);
-      if (index !== -1) {
-        rawData[index] = updatedItem;
-        localStorage.setItem(this.dbName, JSON.stringify(rawData));
-      }
+      const index = rawData.findIndex(item => item.id === params[0].id);
+      if (index !== -1) { rawData[index] = params[0]; localStorage.setItem(this.dbName, JSON.stringify(rawData)); }
       return { rowsAffected: 1 };
     }
-
-    if (sql.startsWith('DELETE FROM installments')) {
-      const [id] = params;
-      const filtered = rawData.filter(item => item.id !== id);
-      localStorage.setItem(this.dbName, JSON.stringify(filtered));
-      return { rowsAffected: 1 };
+    if (sql.startsWith('DELETE FROM installments')) { localStorage.setItem(this.dbName, JSON.stringify(rawData.filter(item => item.id !== params[0]))); return { rowsAffected: 1 }; }
+    if (sql.startsWith('DROP_ALL')) {
+      localStorage.setItem(this.dbName, JSON.stringify([]));
+      localStorage.setItem(this.budgetDbName, JSON.stringify([]));
+      localStorage.setItem(this.assetsDbName, JSON.stringify({ savingsSAR: 0, goldGrams: 0 }));
+      return { rowsAffected: 0 };
     }
 
-    if (sql.startsWith('RESTORE_FULL_DATABASE')) {
-      const [fullData] = params;
-      localStorage.setItem(this.dbName, JSON.stringify(fullData));
-      return { rowsAffected: fullData.length };
-    }
+    const budgetData = JSON.parse(localStorage.getItem(this.budgetDbName) || '[]');
+    if (sql.startsWith('SELECT ALL FROM budget')) return budgetData;
+    if (sql.startsWith('INSERT INTO budget')) { budgetData.unshift(params[0]); localStorage.setItem(this.budgetDbName, JSON.stringify(budgetData)); return { rowsAffected: 1 }; }
+    if (sql.startsWith('DELETE FROM budget')) { localStorage.setItem(this.budgetDbName, JSON.stringify(budgetData.filter(i => i.id !== params[0]))); return { rowsAffected: 1 }; }
+    
+    if (sql.startsWith('GET ASSETS')) return JSON.parse(localStorage.getItem(this.assetsDbName) || '{"savingsSAR": 0, "goldGrams": 0}');
+    if (sql.startsWith('UPDATE ASSETS')) { localStorage.setItem(this.assetsDbName, JSON.stringify(params[0])); return { rowsAffected: 1 }; }
 
     return rawData;
   }
 
-  exportDatabaseDump() {
-    return localStorage.getItem(this.dbName) || '[]';
-  }
-
+  exportDatabaseDump() { return localStorage.getItem(this.dbName) || '[]'; }
   importDatabaseDump(jsonDump) {
     try {
       const parsed = JSON.parse(jsonDump);
-      if (Array.isArray(parsed)) {
-        localStorage.setItem(this.dbName, JSON.stringify(parsed));
-        return true;
-      }
+      if (Array.isArray(parsed)) { localStorage.setItem(this.dbName, JSON.stringify(parsed)); return true; }
       return false;
-    } catch {
-      return false;
-    }
+    } catch { return false; }
   }
 }
-
 const dbInstance = new SQLiteDatabase();
 
-// ==========================================
-// 2. CONFIGURATION & PRESET CONSTANTS
-// ==========================================
-
 const PROVIDER_CONFIG = {
-  Tabby: {
-    color: 'bg-emerald-500',
-    badgeBg: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
-    minSplits: 4,
-    maxSplits: 24,
-    description: 'Split payments (4 to 24 months)'
-  },
-  Tamara: {
-    color: 'bg-amber-500',
-    badgeBg: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
-    minSplits: 4,
-    maxSplits: 24,
-    description: 'Split payments (4 to 24 months)'
-  },
-  'SNB Al Ahli Flex Card': {
-    color: 'bg-green-700',
-    badgeBg: 'bg-green-100 dark:bg-green-950/60 text-green-800 dark:text-green-200 border-green-300 dark:border-green-800',
-    minSplits: 4,
-    maxSplits: 4,
-    isFixedSplits: true,
-    description: 'Fixed 4 installment periods'
-  },
-  'Car Loan': {
-    color: 'bg-blue-600',
-    badgeBg: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
-    minSplits: 12,
-    maxSplits: 84,
-    description: 'Auto Lease & Car Finance (Balloon payment)'
-  },
-  'Telecom / Phone Contract': {
-    color: 'bg-purple-600',
-    badgeBg: 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800',
-    minSplits: 12,
-    maxSplits: 36,
-    description: 'Mobile Package + Phone Device Installment'
-  },
-  Other: {
-    color: 'bg-indigo-500',
-    badgeBg: 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
-    minSplits: 1,
-    maxSplits: 60,
-    description: 'Custom installment arrangement'
-  }
+  Tabby: { color: 'bg-emerald-500', barColor: '#10b981', badgeBg: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800', minSplits: 2, maxSplits: 24, description: 'Split payments (2 to 24 months)' },
+  Tamara: { color: 'bg-amber-500', barColor: '#f59e0b', badgeBg: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800', minSplits: 2, maxSplits: 24, description: 'Split payments (2 to 24 months)' },
+  'SNB Al Ahli Flex Card': { color: 'bg-green-700', barColor: '#15803d', badgeBg: 'bg-green-100 dark:bg-green-950/60 text-green-800 dark:text-green-200 border-green-300 dark:border-green-800', minSplits: 4, maxSplits: 4, isFixedSplits: true, description: 'Fixed 4 installment periods' },
+  'Car Loan': { color: 'bg-blue-600', barColor: '#2563eb', badgeBg: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800', minSplits: 12, maxSplits: 84, description: 'Auto Lease & Car Finance' },
+  'Telecom / Phone Contract': { color: 'bg-purple-600', barColor: '#9333ea', badgeBg: 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800', minSplits: 12, maxSplits: 36, description: 'Mobile Package + Phone' },
+  Other: { color: 'bg-indigo-500', barColor: '#6366f1', badgeBg: 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800', minSplits: 1, maxSplits: 60, description: 'Custom arrangement' }
 };
 
-const CATEGORIES = [
-  'Electronics',
-  'Home & Furniture',
-  'Car Loan',
-  'Telecom',
-  'Travel',
-  'Fashion',
-  'Health & Beauty',
-  'Education',
-  'General'
-];
+const CATEGORIES = ['Electronics', 'Home & Furniture', 'Car Loan', 'Telecom', 'Travel', 'Fashion', 'Health & Beauty', 'Education', 'General'];
 
 // ==========================================
 // 3. MAIN REACT APPLICATION COMPONENT
 // ==========================================
-
 export default function App() {
-  const [darkMode, setDarkMode] = useState(() => {
-    return localStorage.getItem('theme') === 'dark' ||
-      (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  });
-
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches));
+  
+  const [lang, setLang] = useState('ar');
   const [currency, setCurrency] = useState('SAR');
-  const [dbStatus, setDbStatus] = useState('Initializing Local SQLite...');
+  const t = (key) => TRANSLATIONS[lang][key] || key;
+
+  const [budget, setBudget] = useState([]);
+  const [assets, setAssets] = useState({ savingsSAR: 0, goldGrams: 0 });
+  const [goldPriceSAR, setGoldPriceSAR] = useState(482.16);
+
+  const [dbStatus, setDbStatus] = useState('Initializing Secure SQLite...');
   const [installments, setInstallments] = useState([]);
 
   // Navigation & Filtering
@@ -360,1352 +153,732 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState(null);
 
-  // Modals & Settings
+  // Investment Chart Segmentation View
+  const [chartSegment, setChartSegment] = useState('all');
+
+  // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
-  // Cloud Sync Settings State
-  const [cloudSettings, setCloudSettings] = useState({
-    provider: 'firebase', // firebase or supabase
-    enabled: false,
-    apiKey: '',
-    projectUrl: '',
-    syncInterval: 30
-  });
-
-  // Form State for Add / Edit
+  // Form State
   const [formData, setFormData] = useState({
-    title: '',
-    provider: 'Tabby',
-    totalAmount: '',
-    totalSplits: 4,
-    startDate: new Date().toISOString().split('T')[0],
-    category: 'Electronics',
-    notes: '',
-    // Car specific
-    carMakeModel: '',
-    bankLender: '',
-    balloonPayment: 0,
-    monthlyPayment: '',
-    // Telecom specific
-    telecomOperator: 'STC',
-    phoneNumber: '',
-    mainPlanCost: '',
-    deviceCost: ''
+    title: '', provider: 'Tabby', totalAmount: '', totalSplits: 3, startDate: new Date().toISOString().split('T')[0], category: 'Electronics', notes: '',
+    carMakeModel: '', bankLender: '', balloonPayment: 0, monthlyPayment: '', telecomOperator: 'STC', phoneNumber: '', mainPlanCost: '', deviceCost: ''
   });
 
-  // Initialize SQLite Database
+  // Real-Time Internet Gold Price Sync from gold-api.com
   useEffect(() => {
     const initDb = async () => {
       await dbInstance.init();
-      const records = await dbInstance.executeQuery('SELECT ALL FROM installments');
-      setInstallments(records);
-      setDbStatus('Local SQLite Connected (Native / WebSQL)');
+      setInstallments(await dbInstance.executeQuery('SELECT ALL FROM installments'));
+      setBudget(await dbInstance.executeQuery('SELECT ALL FROM budget'));
+      setAssets(await dbInstance.executeQuery('GET ASSETS'));
+      setDbStatus(lang === 'ar' ? 'قاعدة البيانات آمنة ونشطة' : 'SQLite Secured & Active');
     };
     initDb();
-  }, []);
 
-  // Dark Mode side effects
+    const fetchLiveGoldPrice = async () => {
+      try {
+        const res = await fetch('https://api.gold-api.com/price/XAU');
+        const data = await res.json();
+        if (data && data.price) {
+          const sarPerGram = (data.price / 31.1034768) * 3.75;
+          setGoldPriceSAR(Number(sarPerGram.toFixed(2)));
+        }
+      } catch (err) {
+        console.warn('Live gold API fallback active:', err);
+      }
+    };
+    fetchLiveGoldPrice();
+    const goldInterval = setInterval(fetchLiveGoldPrice, 60000);
+    return () => clearInterval(goldInterval);
+  }, [lang]);
+
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
+    if (darkMode) { document.documentElement.classList.add('dark'); localStorage.setItem('theme', 'dark'); } 
+    else { document.documentElement.classList.remove('dark'); localStorage.setItem('theme', 'light'); }
   }, [darkMode]);
 
-  // Handle Provider Selection Change in Modal
-  const handleProviderChange = (pKey) => {
-    let defaultSplits = 4;
-    let category = 'Electronics';
-
-    if (pKey === 'SNB Al Ahli Flex Card') {
-      defaultSplits = 4; // Strictly fixed to 4
-      category = 'General';
-    } else if (pKey === 'Car Loan') {
-      defaultSplits = 60;
-      category = 'Car Loan';
-    } else if (pKey === 'Telecom / Phone Contract') {
-      defaultSplits = 24;
-      category = 'Telecom';
-    } else if (pKey === 'Tabby' || pKey === 'Tamara') {
-      defaultSplits = 4;
-      category = 'Electronics';
-    } else if (pKey === 'Other') {
-      defaultSplits = 6;
-    }
-
-    setFormData(prev => ({
-      ...prev,
-      provider: pKey,
-      totalSplits: defaultSplits,
-      category: category
-    }));
+  const fmt = (amountSAR) => {
+    const converted = amountSAR * EXCHANGE_RATES[currency];
+    const formattedNum = converted.toLocaleString(lang === 'ar' ? 'ar-SA' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (
+      <span dir="ltr" className="inline-block font-mono">
+        {formattedNum} {currency}
+      </span>
+    );
   };
 
-  // Generate Payment Breakdown Schedule
-  const generateSchedule = (provider, totalAmt, splits, startDateStr, carInfo = {}, telecomInfo = {}) => {
-    const startDate = new Date(startDateStr);
-    const schedule = [];
+  const handleAddBudget = async (e) => {
+    e.preventDefault();
+    const amountSAR = Number(e.target.amount.value) / EXCHANGE_RATES[currency]; 
+    const newTx = { id: Date.now(), desc: e.target.desc.value, amount: amountSAR, type: e.target.type.value, date: new Date().toISOString().split('T')[0] };
+    await dbInstance.executeQuery('INSERT INTO budget', [newTx]);
+    setBudget(await dbInstance.executeQuery('SELECT ALL FROM budget'));
+    e.target.reset();
+  };
 
-    if (provider === 'Car Loan') {
-      const monthly = Number(carInfo.monthlyPayment || 0);
-      const finalBalloon = Number(carInfo.balloonPayment || 0);
+  const handleDeleteBudget = async (id) => {
+    await dbInstance.executeQuery('DELETE FROM budget', [id]);
+    setBudget(await dbInstance.executeQuery('SELECT ALL FROM budget'));
+  };
 
-      for (let i = 0; i < splits; i++) {
-        const nextDate = new Date(startDate);
-        nextDate.setMonth(startDate.getMonth() + i);
+  const handleConfirmClearDatabase = async () => {
+    await dbInstance.executeQuery('DROP_ALL');
+    setInstallments([]);
+    setBudget([]);
+    setAssets({ savingsSAR: 0, goldGrams: 0 });
+    setIsClearConfirmOpen(false);
+    alert(lang === 'ar' ? 'تم تفريغ قاعدة البيانات بنجاح!' : 'Database successfully cleared!');
+  };
 
-        const isLast = i === splits - 1;
-        const paymentAmt = isLast ? (finalBalloon > 0 ? finalBalloon : monthly) : monthly;
+  const handleAssetUpdate = async (type, operation, amount) => {
+    const amt = Number(amount);
+    if (!amt || amt <= 0) return;
+    const newAssets = { ...assets };
+    const amtSAR = amt / EXCHANGE_RATES[currency];
 
-        schedule.push({
-          id: `pay-${Date.now()}-${i}`,
-          due_date: nextDate.toISOString().split('T')[0],
-          amount: Math.round(paymentAmt * 100) / 100,
-          status: 'Pending',
-          paid_date: null
-        });
-      }
-    } else if (provider === 'Telecom / Phone Contract') {
-      const planCost = Number(telecomInfo.mainPlanCost || 0);
-      const devCost = Number(telecomInfo.deviceCost || 0);
-      const totalMonthly = planCost + devCost;
-
-      for (let i = 0; i < splits; i++) {
-        const nextDate = new Date(startDate);
-        nextDate.setMonth(startDate.getMonth() + i);
-
-        schedule.push({
-          id: `pay-${Date.now()}-${i}`,
-          due_date: nextDate.toISOString().split('T')[0],
-          amount: Math.round(totalMonthly * 100) / 100,
-          status: 'Pending',
-          paid_date: null
-        });
+    if (type === 'savings') {
+      if (operation === 'add') {
+        newAssets.savingsSAR += amtSAR;
+        const transferTx = {
+          id: Date.now(),
+          desc: lang === 'ar' ? 'تحويل إلى حساب التوفير' : 'Transfer to Savings Account',
+          amount: amtSAR,
+          type: 'Expense',
+          date: new Date().toISOString().split('T')[0]
+        };
+        await dbInstance.executeQuery('INSERT INTO budget', [transferTx]);
+        setBudget(await dbInstance.executeQuery('SELECT ALL FROM budget'));
+      } else {
+        newAssets.savingsSAR = Math.max(0, newAssets.savingsSAR - amtSAR);
       }
     } else {
-      const baseAmount = Number(totalAmt);
-      const monthlyAmt = Math.round((baseAmount / splits) * 100) / 100;
-      let accumulated = 0;
+      newAssets.goldGrams = operation === 'buy' ? newAssets.goldGrams + amt : Math.max(0, newAssets.goldGrams - amt);
+    }
+    await dbInstance.executeQuery('UPDATE ASSETS', [newAssets]);
+    setAssets(newAssets);
+  };
 
+  const handleProviderChange = (pKey) => {
+    const config = PROVIDER_CONFIG[pKey] || PROVIDER_CONFIG['Other'];
+    let defaultSplits = config.minSplits || 3; 
+    let category = 'Electronics';
+    if (pKey === 'SNB Al Ahli Flex Card') { defaultSplits = 4; category = 'General'; } 
+    else if (pKey === 'Car Loan') { defaultSplits = 60; category = 'Car Loan'; } 
+    else if (pKey === 'Telecom / Phone Contract') { defaultSplits = 24; category = 'Telecom'; } 
+    else if (pKey === 'Tabby' || pKey === 'Tamara') { defaultSplits = 3; }
+    else if (pKey === 'Other') { defaultSplits = 6; }
+    setFormData(prev => ({ ...prev, provider: pKey, totalSplits: defaultSplits, category: category }));
+  };
+
+  const generateSchedule = (provider, totalAmt, splits, startDateStr, carInfo = {}, telecomInfo = {}) => {
+    const startDate = new Date(startDateStr); const schedule = [];
+    if (provider === 'Car Loan') {
+      const monthly = Number(carInfo.monthlyPayment || 0); const finalBalloon = Number(carInfo.balloonPayment || 0);
       for (let i = 0; i < splits; i++) {
-        const nextDate = new Date(startDate);
-        nextDate.setMonth(startDate.getMonth() + i);
-
-        const isLast = i === splits - 1;
-        const paymentAmt = isLast ? Math.round((baseAmount - accumulated) * 100) / 100 : monthlyAmt;
+        const nextDate = new Date(startDate); nextDate.setMonth(startDate.getMonth() + i);
+        schedule.push({ id: `pay-${Date.now()}-${i}`, due_date: nextDate.toISOString().split('T')[0], amount: i === splits - 1 ? (finalBalloon > 0 ? finalBalloon : monthly) : monthly, status: 'Pending', paid_date: null });
+      }
+    } else if (provider === 'Telecom / Phone Contract') {
+      const totalMonthly = Number(telecomInfo.mainPlanCost || 0) + Number(telecomInfo.deviceCost || 0);
+      for (let i = 0; i < splits; i++) {
+        const nextDate = new Date(startDate); nextDate.setMonth(startDate.getMonth() + i);
+        schedule.push({ id: `pay-${Date.now()}-${i}`, due_date: nextDate.toISOString().split('T')[0], amount: Math.round(totalMonthly * 100) / 100, status: 'Pending', paid_date: null });
+      }
+    } else {
+      const baseAmount = Number(totalAmt); const monthlyAmt = Math.round((baseAmount / splits) * 100) / 100; let accumulated = 0;
+      for (let i = 0; i < splits; i++) {
+        const nextDate = new Date(startDate); nextDate.setMonth(startDate.getMonth() + i);
+        const paymentAmt = i === splits - 1 ? Math.round((baseAmount - accumulated) * 100) / 100 : monthlyAmt;
         accumulated += paymentAmt;
-
-        schedule.push({
-          id: `pay-${Date.now()}-${i}`,
-          due_date: nextDate.toISOString().split('T')[0],
-          amount: paymentAmt,
-          status: 'Pending',
-          paid_date: null
-        });
+        schedule.push({ id: `pay-${Date.now()}-${i}`, due_date: nextDate.toISOString().split('T')[0], amount: paymentAmt, status: 'Pending', paid_date: null });
       }
     }
-
     return schedule;
   };
 
-  // Submit Form (Add or Edit)
   const handleSubmitForm = async (e) => {
     e.preventDefault();
-
     let computedTotalAmount = Number(formData.totalAmount || 0);
-    const splits = Number(formData.totalSplits || 4);
-
+    const splits = Number(formData.totalSplits || 3);
     if (formData.provider === 'Car Loan') {
-      const monthly = Number(formData.monthlyPayment || 0);
-      const balloon = Number(formData.balloonPayment || 0);
-      computedTotalAmount = (monthly * (splits - 1)) + (balloon > 0 ? balloon : monthly);
+      computedTotalAmount = (Number(formData.monthlyPayment || 0) * (splits - 1)) + (Number(formData.balloonPayment || 0) > 0 ? Number(formData.balloonPayment || 0) : Number(formData.monthlyPayment || 0));
     } else if (formData.provider === 'Telecom / Phone Contract') {
-      const monthlyTotal = Number(formData.mainPlanCost || 0) + Number(formData.deviceCost || 0);
-      computedTotalAmount = monthlyTotal * splits;
+      computedTotalAmount = (Number(formData.mainPlanCost || 0) + Number(formData.deviceCost || 0)) * splits;
     }
-
     if (!formData.title || computedTotalAmount <= 0) return;
 
-    if (editingItem) {
-      const updatedSchedule = generateSchedule(
-        formData.provider,
-        computedTotalAmount,
-        splits,
-        formData.startDate,
-        { monthlyPayment: formData.monthlyPayment, balloonPayment: formData.balloonPayment },
-        { mainPlanCost: formData.mainPlanCost, deviceCost: formData.deviceCost }
-      );
+    const schedule = generateSchedule(formData.provider, computedTotalAmount, splits, formData.startDate, { monthlyPayment: formData.monthlyPayment, balloonPayment: formData.balloonPayment }, { mainPlanCost: formData.mainPlanCost, deviceCost: formData.deviceCost });
+    const record = {
+      ...editingItem, id: editingItem ? editingItem.id : `inst-${Date.now()}`, title: formData.title, provider: formData.provider, total_amount: computedTotalAmount, total_splits: splits, start_date: formData.startDate, category: formData.category, notes: formData.notes, car_make_model: formData.carMakeModel, bank_lender: formData.bankLender, monthly_payment: Number(formData.monthlyPayment || 0), balloon_payment: Number(formData.balloonPayment || 0), telecom_operator: formData.telecomOperator, phone_number: formData.phoneNumber, main_plan_cost: Number(formData.mainPlanCost || 0), device_cost: Number(formData.deviceCost || 0), schedule
+    };
 
-      const updatedRecord = {
-        ...editingItem,
-        title: formData.title,
-        provider: formData.provider,
-        total_amount: computedTotalAmount,
-        total_splits: splits,
-        start_date: formData.startDate,
-        category: formData.category,
-        notes: formData.notes,
-        car_make_model: formData.carMakeModel,
-        bank_lender: formData.bankLender,
-        monthly_payment: Number(formData.monthlyPayment || 0),
-        balloon_payment: Number(formData.balloonPayment || 0),
-        telecom_operator: formData.telecomOperator,
-        phone_number: formData.phoneNumber,
-        main_plan_cost: Number(formData.mainPlanCost || 0),
-        device_cost: Number(formData.deviceCost || 0),
-        schedule: updatedSchedule
-      };
-
-      await dbInstance.executeQuery('UPDATE installments', [updatedRecord]);
-    } else {
-      const newSchedule = generateSchedule(
-        formData.provider,
-        computedTotalAmount,
-        splits,
-        formData.startDate,
-        { monthlyPayment: formData.monthlyPayment, balloonPayment: formData.balloonPayment },
-        { mainPlanCost: formData.mainPlanCost, deviceCost: formData.deviceCost }
-      );
-
-      const newRecord = {
-        id: `inst-${Date.now()}`,
-        title: formData.title,
-        provider: formData.provider,
-        total_amount: computedTotalAmount,
-        total_splits: splits,
-        start_date: formData.startDate,
-        category: formData.category,
-        notes: formData.notes,
-        car_make_model: formData.carMakeModel,
-        bank_lender: formData.bankLender,
-        monthly_payment: Number(formData.monthlyPayment || 0),
-        balloon_payment: Number(formData.balloonPayment || 0),
-        telecom_operator: formData.telecomOperator,
-        phone_number: formData.phoneNumber,
-        main_plan_cost: Number(formData.mainPlanCost || 0),
-        device_cost: Number(formData.deviceCost || 0),
-        schedule: newSchedule
-      };
-
-      await dbInstance.executeQuery('INSERT INTO installments', [newRecord]);
-    }
-
-    const records = await dbInstance.executeQuery('SELECT ALL FROM installments');
-    setInstallments(records);
+    await dbInstance.executeQuery(editingItem ? 'UPDATE installments' : 'INSERT INTO installments', [record]);
+    setInstallments(await dbInstance.executeQuery('SELECT ALL FROM installments'));
     closeModal();
   };
 
-  const openAddModal = () => {
-    setEditingItem(null);
-    setFormData({
-      title: '',
-      provider: 'Tabby',
-      totalAmount: '',
-      totalSplits: 4,
-      startDate: new Date().toISOString().split('T')[0],
-      category: 'Electronics',
-      notes: '',
-      carMakeModel: '',
-      bankLender: '',
-      balloonPayment: 0,
-      monthlyPayment: '',
-      telecomOperator: 'STC',
-      phoneNumber: '',
-      mainPlanCost: '',
-      deviceCost: ''
-    });
-    setIsModalOpen(true);
+  const openAddModal = () => { 
+    setEditingItem(null); 
+    setFormData({ title: '', provider: 'Tabby', totalAmount: '', totalSplits: 3, startDate: new Date().toISOString().split('T')[0], category: 'Electronics', notes: '', carMakeModel: '', bankLender: '', balloonPayment: 0, monthlyPayment: '', telecomOperator: 'STC', phoneNumber: '', mainPlanCost: '', deviceCost: '' }); 
+    setIsModalOpen(true); 
   };
-
-  const openEditModal = (item) => {
-    setEditingItem(item);
-    setFormData({
-      title: item.title || '',
-      provider: item.provider || 'Tabby',
-      totalAmount: item.total_amount || '',
-      totalSplits: item.total_splits || 4,
-      startDate: item.start_date || new Date().toISOString().split('T')[0],
-      category: item.category || 'General',
-      notes: item.notes || '',
-      carMakeModel: item.car_make_model || '',
-      bankLender: item.bank_lender || '',
-      balloonPayment: item.balloon_payment || 0,
-      monthlyPayment: item.monthly_payment || '',
-      telecomOperator: item.telecom_operator || 'STC',
-      phoneNumber: item.phone_number || '',
-      mainPlanCost: item.main_plan_cost || '',
-      deviceCost: item.device_cost || ''
-    });
-    setIsModalOpen(true);
+  const openEditModal = (item) => { 
+    setEditingItem(item); 
+    setFormData({ title: item.title || '', provider: item.provider || 'Tabby', totalAmount: item.total_amount || '', totalSplits: item.total_splits || 3, startDate: item.start_date || new Date().toISOString().split('T')[0], category: item.category || 'General', notes: item.notes || '', carMakeModel: item.car_make_model || '', bankLender: item.bank_lender || '', balloonPayment: item.balloon_payment || 0, monthlyPayment: item.monthly_payment || '', telecomOperator: item.telecom_operator || 'STC', phoneNumber: item.phone_number || '', mainPlanCost: item.main_plan_cost || '', deviceCost: item.device_cost || '' }); 
+    setIsModalOpen(true); 
   };
+  const closeModal = () => { setIsModalOpen(false); setEditingItem(null); };
 
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setEditingItem(null);
-  };
-
-  const handleDelete = async (id) => {
-    await dbInstance.executeQuery('DELETE FROM installments', [id]);
-    const records = await dbInstance.executeQuery('SELECT ALL FROM installments');
-    setInstallments(records);
-  };
-
+  const handleDelete = async (id) => { await dbInstance.executeQuery('DELETE FROM installments', [id]); setInstallments(await dbInstance.executeQuery('SELECT ALL FROM installments')); };
+  
   const togglePaymentStatus = async (installmentId, scheduleId) => {
-    const today = new Date().toISOString().split('T')[0];
     const targetItem = installments.find(i => i.id === installmentId);
     if (!targetItem) return;
-
-    const updatedSchedule = targetItem.schedule.map(pay => {
-      if (pay.id !== scheduleId) return pay;
-      const newStatus = pay.status === 'Paid' ? 'Pending' : 'Paid';
-      return {
-        ...pay,
-        status: newStatus,
-        paid_date: newStatus === 'Paid' ? today : null
-      };
-    });
-
-    const updatedItem = { ...targetItem, schedule: updatedSchedule };
-    await dbInstance.executeQuery('UPDATE installments', [updatedItem]);
-    const records = await dbInstance.executeQuery('SELECT ALL FROM installments');
-    setInstallments(records);
+    targetItem.schedule = targetItem.schedule.map(pay => pay.id === scheduleId ? { ...pay, status: pay.status === 'Paid' ? 'Pending' : 'Paid', paid_date: pay.status === 'Paid' ? null : new Date().toISOString().split('T')[0] } : pay);
+    await dbInstance.executeQuery('UPDATE installments', [targetItem]);
+    setInstallments(await dbInstance.executeQuery('SELECT ALL FROM installments'));
   };
 
-  // EXPORT AND IMPORT DATABASE (.SQLITE / JSON)
   const handleExportDatabase = () => {
-    const jsonDump = dbInstance.exportDatabaseDump();
-    const blob = new Blob([jsonDump], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `installment_manager_db_backup_${new Date().toISOString().split('T')[0]}.sqlite.json`;
+    a.href = URL.createObjectURL(new Blob([dbInstance.exportDatabaseDump()], { type: 'application/json' }));
+    a.download = `aurawealth_pro_backup_${new Date().toISOString().split('T')[0]}.sqlite.json`;
     a.click();
-    URL.revokeObjectURL(url);
   };
 
   const handleImportDatabase = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
+    const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader();
-    reader.onload = async (evt) => {
-      const content = evt.target.result;
-      const success = dbInstance.importDatabaseDump(content);
-      if (success) {
-        const records = await dbInstance.executeQuery('SELECT ALL FROM installments');
-        setInstallments(records);
-        alert('SQLite Database successfully restored!');
-      } else {
-        alert('Invalid database backup file format.');
-      }
-    };
+    reader.onload = async (evt) => { if (dbInstance.importDatabaseDump(evt.target.result)) { setInstallments(await dbInstance.executeQuery('SELECT ALL FROM installments')); alert(lang === 'ar' ? 'تم استعادة قاعدة البيانات بنجاح!' : 'Database restored!'); } else alert('Invalid backup file.'); };
     reader.readAsText(file);
-  };
-
-  const resetToDefaultData = async () => {
-    await dbInstance.executeQuery('RESTORE_FULL_DATABASE', [INITIAL_SAMPLE_INSTALLMENTS]);
-    const records = await dbInstance.executeQuery('SELECT ALL FROM installments');
-    setInstallments(records);
   };
 
   // Metrics Calculation
   const stats = useMemo(() => {
-    let totalRemaining = 0;
-    let thisMonthUpcoming = 0;
-    let activeCount = 0;
-    let completedCount = 0;
-
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-
+    let totalRemaining = 0; let thisMonthUpcoming = 0; let activeCount = 0; let completedCount = 0;
+    const currMonth = new Date().getMonth(); const currYear = new Date().getFullYear();
     installments.forEach(item => {
-      const paidCount = item.schedule.filter(s => s.status === 'Paid').length;
-      const isCompleted = paidCount === item.schedule.length;
-
-      if (isCompleted) {
-        completedCount++;
-      } else {
-        activeCount++;
-      }
-
+      const isCompleted = item.schedule.every(s => s.status === 'Paid');
+      isCompleted ? completedCount++ : activeCount++;
       item.schedule.forEach(pay => {
         if (pay.status !== 'Paid') {
           totalRemaining += pay.amount;
-
-          const payDate = new Date(pay.due_date);
-          if (payDate.getMonth() === currentMonth && payDate.getFullYear() === currentYear) {
-            thisMonthUpcoming += pay.amount;
-          }
+          const d = new Date(pay.due_date);
+          if (d.getMonth() === currMonth && d.getFullYear() === currYear) thisMonthUpcoming += pay.amount;
         }
       });
     });
-
     return { totalRemaining, thisMonthUpcoming, activeCount, completedCount };
   }, [installments]);
 
-  // Filtering Logic
+  // Budget calculations
+  const budgetSummary = useMemo(() => {
+    const totalIncome = budget.filter(b => b.type === 'Income').reduce((a, b) => a + b.amount, 0);
+    const manualExpenses = budget.filter(b => b.type === 'Expense').reduce((a, b) => a + b.amount, 0);
+    const totalExpenses = manualExpenses + stats.thisMonthUpcoming;
+    const netBalance = totalIncome - totalExpenses;
+    return { totalIncome, totalExpenses, netBalance, manualExpenses };
+  }, [budget, stats.thisMonthUpcoming]);
+
+  // Investment Chart Data Points Generator based on segmentation
+  const investmentChartData = useMemo(() => {
+    const totalSavings = assets.savingsSAR;
+    const goldVal = assets.goldGrams * goldPriceSAR;
+    const totalWealth = totalSavings + goldVal;
+    const income = budgetSummary.totalIncome;
+    const debt = stats.totalRemaining;
+
+    let baseValues = [
+      { label: lang === 'ar' ? 'يناير' : 'Jan', val: totalWealth * 0.7 + income * 0.2 },
+      { label: lang === 'ar' ? 'فبراير' : 'Feb', val: totalWealth * 0.8 + income * 0.3 },
+      { label: lang === 'ar' ? 'مارس' : 'Mar', val: totalWealth * 0.85 + income * 0.4 },
+      { label: lang === 'ar' ? 'أبريل' : 'Apr', val: totalWealth * 0.9 + income * 0.6 },
+      { label: lang === 'ar' ? 'مايو' : 'May', val: totalWealth * 0.95 + income * 0.8 },
+      { label: lang === 'ar' ? 'اليوم' : 'Current', val: totalWealth + income - debt }
+    ];
+
+    if (chartSegment === 'debt') {
+      baseValues = baseValues.map((pt, idx) => ({ ...pt, val: debt * (0.8 + idx * 0.04) }));
+    } else if (chartSegment === 'wealth') {
+      baseValues = baseValues.map((pt, idx) => ({ ...pt, val: totalWealth * (0.5 + idx * 0.1) }));
+    }
+
+    const maxVal = Math.max(...baseValues.map(p => p.val), 1000);
+    return { points: baseValues, maxVal };
+  }, [assets, goldPriceSAR, budgetSummary.totalIncome, stats.totalRemaining, chartSegment, lang]);
+
   const filteredInstallments = useMemo(() => {
-    return installments
-      .filter(item => {
-        const matchesProvider = providerFilter === 'All' || item.provider === providerFilter;
-        const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.notes?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.phone_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.car_make_model?.toLowerCase().includes(searchQuery.toLowerCase());
-
-        const isCompleted = item.schedule.every(s => s.status === 'Paid');
-        const matchesStatus = statusFilter === 'All' ? true :
-          statusFilter === 'Completed' ? isCompleted :
-            statusFilter === 'Active' ? !isCompleted : true;
-
-        return matchesProvider && matchesSearch && matchesStatus;
-      })
-      .sort((a, b) => {
-        if (sortBy === 'totalAmount') {
-          return b.total_amount - a.total_amount;
-        } else if (sortBy === 'title') {
-          return a.title.localeCompare(b.title);
-        } else {
-          const getNextDueDate = (inst) => {
-            const pending = inst.schedule.filter(s => s.status !== 'Paid');
-            return pending.length > 0 ? pending[0].due_date : '9999-12-31';
-          };
-          return getNextDueDate(a).localeCompare(getNextDueDate(b));
-        }
-      });
+    return installments.filter(item => {
+      const matchesProvider = providerFilter === 'All' || item.provider === providerFilter;
+      const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) || item.category?.toLowerCase().includes(searchQuery.toLowerCase()) || item.notes?.toLowerCase().includes(searchQuery.toLowerCase());
+      const isCompleted = item.schedule.every(s => s.status === 'Paid');
+      const matchesStatus = statusFilter === 'All' ? true : statusFilter === 'Completed' ? isCompleted : !isCompleted;
+      return matchesProvider && matchesSearch && matchesStatus;
+    }).sort((a, b) => sortBy === 'totalAmount' ? b.total_amount - a.total_amount : sortBy === 'title' ? a.title.localeCompare(b.title) : (a.schedule.filter(s => s.status !== 'Paid')[0]?.due_date || '9999').localeCompare(b.schedule.filter(s => s.status !== 'Paid')[0]?.due_date || '9999'));
   }, [installments, providerFilter, statusFilter, sortBy, searchQuery]);
 
-  // Monthly Forecast Grouping
-  const calendarTimeline = useMemo(() => {
-    const monthsMap = {};
-
-    installments.forEach(item => {
-      item.schedule.forEach(pay => {
-        const d = new Date(pay.due_date);
-        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        const monthLabel = d.toLocaleString('default', { month: 'short', year: 'numeric' });
-
-        if (!monthsMap[monthKey]) {
-          monthsMap[monthKey] = {
-            key: monthKey,
-            label: monthLabel,
-            totalDue: 0,
-            paidTotal: 0,
-            pendingTotal: 0,
-            payments: []
-          };
-        }
-
-        monthsMap[monthKey].totalDue += pay.amount;
-        if (pay.status === 'Paid') {
-          monthsMap[monthKey].paidTotal += pay.amount;
-        } else {
-          monthsMap[monthKey].pendingTotal += pay.amount;
-        }
-
-        monthsMap[monthKey].payments.push({
-          ...pay,
-          title: item.title,
-          provider: item.provider,
-          parentId: item.id
-        });
-      });
-    });
-
-    return Object.values(monthsMap).sort((a, b) => a.key.localeCompare(b.key));
-  }, [installments]);
-
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200">
+    <div dir={lang === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500 selection:text-white transition-colors duration-200">
       
-      {/* HEADER / NAVIGATION BAR */}
-      <header className="sticky top-0 z-30 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 lg:px-8 py-3 transition-colors">
+      {/* HEADER */}
+      <header className="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-xl border-b border-slate-800 px-4 lg:px-8 py-3.5">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-tr from-emerald-500 to-teal-600 text-white rounded-xl shadow-md">
-              <CreditCard className="w-6 h-6" />
+            <div className="p-2.5 bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-500 text-white rounded-2xl shadow-lg shadow-emerald-500/20">
+              <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 bg-clip-text text-transparent">
-                Installment & Loan Manager
-              </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+                  {t('app_title')}
+                </h1>
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">PRO OS</span>
+              </div>
+              <p className="text-xs text-slate-400 flex items-center gap-2 font-medium">
+                <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 {dbStatus}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            {/* Database & Cloud Control Buttons */}
-            <button
-              onClick={() => setIsCloudModalOpen(true)}
-              className="p-2 text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition text-xs font-semibold flex items-center gap-1.5"
-              title="Cloud Sync & DB Settings"
-            >
-              <Cloud className="w-4 h-4 text-blue-500" />
-              <span className="hidden sm:inline">Sync & DB</span>
+          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-end">
+            <button onClick={() => setLang(lang === 'en' ? 'ar' : 'en')} className="p-1.5 px-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition">
+              <Globe className="w-4 h-4 text-cyan-400" /> {lang === 'en' ? 'العربية' : 'English'}
             </button>
 
-            <button
-              onClick={handleExportDatabase}
-              className="p-2 text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition text-xs font-semibold flex items-center gap-1.5"
-              title="Export SQLite Backup"
-            >
-              <Download className="w-4 h-4 text-emerald-500" />
-              <span className="hidden sm:inline">Export DB</span>
-            </button>
-
-            <label className="p-2 text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
-              <Upload className="w-4 h-4 text-amber-500" />
-              <span className="hidden sm:inline">Import DB</span>
-              <input type="file" accept=".json,.sqlite" onChange={handleImportDatabase} className="hidden" />
-            </label>
-
-            {/* Currency Selector */}
-            <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-1 text-xs font-semibold">
+            <div className="flex items-center bg-slate-800 border border-slate-700 rounded-xl p-1 text-xs font-bold">
               {['SAR', 'USD', 'AED'].map(curr => (
                 <button
                   key={curr}
                   onClick={() => setCurrency(curr)}
-                  className={`px-2.5 py-1 rounded-md transition ${currency === curr ? 'bg-white dark:bg-slate-700 shadow-xs text-emerald-600 dark:text-emerald-400' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+                  className={`px-2.5 py-1 rounded-lg transition ${currency === curr ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
                 >
                   {curr}
                 </button>
               ))}
             </div>
 
-            {/* Dark Mode Toggle */}
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className="p-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 bg-slate-100 dark:bg-slate-800 rounded-lg transition"
-              aria-label="Toggle Theme"
-            >
-              {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
-            </button>
+            <button onClick={() => setIsClearConfirmOpen(true)} className="p-2 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/60 rounded-xl transition text-rose-300" title={t('clear_db')}><Trash className="w-4 h-4 text-rose-400" /></button>
+            <button onClick={() => setIsCloudModalOpen(true)} className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition text-slate-300" title={t('sync_db')}><Cloud className="w-4 h-4 text-blue-400" /></button>
+            <button onClick={handleExportDatabase} className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition text-slate-300" title={t('export_db')}><Download className="w-4 h-4 text-emerald-400" /></button>
+            <label className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition cursor-pointer text-slate-300" title={t('import_db')}><Upload className="w-4 h-4 text-amber-400" /><input type="file" accept=".json,.sqlite" onChange={handleImportDatabase} className="hidden" /></label>
+            <button onClick={() => setDarkMode(!darkMode)} className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition text-slate-300">{darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-400" />}</button>
 
-            {/* Add Installment Button */}
-            <button
-              onClick={openAddModal}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-sm active:scale-95"
-            >
-              <PlusCircle className="w-4 h-4" />
-              <span>Add Plan</span>
+            <button onClick={openAddModal} className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-600/20 active:scale-95">
+              <PlusCircle className="w-4 h-4" /> <span>{t('add_plan')}</span>
             </button>
           </div>
         </div>
       </header>
 
-      {/* MAIN CONTENT AREA */}
+      {/* MAIN CONTAINER */}
       <main className="max-w-7xl mx-auto px-4 lg:px-8 py-6 space-y-6">
 
-        {/* FINANCIAL SUMMARY CARDS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-xs relative overflow-hidden">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Unpaid Balance</span>
-              <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
-                <DollarSign className="w-5 h-5" />
-              </div>
-            </div>
-            <div className="text-2xl font-bold tracking-tight">
-              {stats.totalRemaining.toLocaleString()} <span className="text-sm font-normal text-slate-500">{currency}</span>
-            </div>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
-              <TrendingUp className="w-3 h-3 text-emerald-500" /> Outstanding commitments
-            </p>
-          </div>
-
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-xs relative overflow-hidden">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Due Current Month</span>
-              <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
-                <Calendar className="w-5 h-5" />
-              </div>
-            </div>
-            <div className="text-2xl font-bold tracking-tight">
-              {stats.thisMonthUpcoming.toLocaleString()} <span className="text-sm font-normal text-slate-500">{currency}</span>
-            </div>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-              Required monthly payments
-            </p>
-          </div>
-
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-xs relative overflow-hidden">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Active Plans</span>
-              <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
-                <Clock className="w-5 h-5" />
-              </div>
-            </div>
-            <div className="text-2xl font-bold tracking-tight">
-              {stats.activeCount} <span className="text-sm font-normal text-slate-500">plans</span>
-            </div>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-              Active installment contracts
-            </p>
-          </div>
-
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-xs relative overflow-hidden">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Completed Plans</span>
-              <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400">
-                <CheckCircle className="w-5 h-5" />
-              </div>
-            </div>
-            <div className="text-2xl font-bold tracking-tight">
-              {stats.completedCount} <span className="text-sm font-normal text-slate-500">plans</span>
-            </div>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-              Fully settled & paid off
-            </p>
-          </div>
+        {/* NAVIGATION TABS */}
+        <div className="flex flex-wrap bg-slate-900 border border-slate-800 p-1.5 rounded-2xl w-fit">
+          <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${activeTab === 'dashboard' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}><Activity className="w-4 h-4"/> {t('dashboard')}</button>
+          <button onClick={() => setActiveTab('budget')} className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${activeTab === 'budget' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}><Wallet className="w-4 h-4"/> {t('budget_assets')}</button>
+          <button onClick={() => setActiveTab('list')} className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${activeTab === 'list' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}><PieChart className="w-4 h-4"/> {t('all_plans')} ({filteredInstallments.length})</button>
         </div>
 
-        {/* PROVIDER STRIP & RULES */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-              <PieChart className="w-4 h-4 text-emerald-500" /> Supported Providers & Rules
-            </h2>
-            <button
-              onClick={resetToDefaultData}
-              className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center gap-1 transition"
-              title="Reset sample data in SQLite"
-            >
-              <RefreshCw className="w-3 h-3" /> Reset Sample DB
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {Object.keys(PROVIDER_CONFIG).filter(k => k !== 'Other').map(pKey => {
-              const config = PROVIDER_CONFIG[pKey];
-              const providerItems = installments.filter(i => i.provider === pKey);
-              const providerTotal = providerItems.reduce((acc, curr) => {
-                const pendingAmt = curr.schedule
-                  .filter(s => s.status !== 'Paid')
-                  .reduce((a, b) => a + b.amount, 0);
-                return acc + pendingAmt;
-              }, 0);
-
-              return (
-                <div
-                  key={pKey}
-                  onClick={() => {
-                    setProviderFilter(pKey);
-                    setActiveTab('list');
-                  }}
-                  className={`cursor-pointer border p-3 rounded-xl transition hover:shadow-sm ${config.badgeBg}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs">{pKey}</span>
-                    <span className="text-[10px] opacity-75 font-mono">{providerItems.length} active</span>
-                  </div>
-                  <div className="mt-2 text-base font-extrabold">
-                    {providerTotal.toLocaleString()} <span className="text-[10px] font-normal">{currency}</span>
-                  </div>
-                  <div className="text-[10px] opacity-80 mt-1 font-medium">
-                    {config.isFixedSplits ? 'Strictly 4 Periods' : `${config.minSplits} to ${config.maxSplits} Months`}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* NAVIGATION & FILTER CONTROLS */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
-          <div className="flex bg-slate-200/60 dark:bg-slate-800/60 p-1 rounded-xl w-fit">
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition ${activeTab === 'dashboard' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={() => setActiveTab('list')}
-              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition ${activeTab === 'list' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
-            >
-              All Plans ({filteredInstallments.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('calendar')}
-              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition ${activeTab === 'calendar' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
-            >
-              Monthly Forecast
-            </button>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative flex-1 sm:w-48">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search plans or phone #..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-
-            <select
-              value={providerFilter}
-              onChange={(e) => setProviderFilter(e.target.value)}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="All">All Providers</option>
-              <option value="Tabby">Tabby (4-24)</option>
-              <option value="Tamara">Tamara (4-24)</option>
-              <option value="SNB Al Ahli Flex Card">SNB Flex (4 Only)</option>
-              <option value="Car Loan">Car Loans</option>
-              <option value="Telecom / Phone Contract">Telecom & Phone</option>
-              <option value="Other">Other</option>
-            </select>
-
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="All">All Statuses</option>
-              <option value="Active">Active Only</option>
-              <option value="Completed">Completed Only</option>
-            </select>
-
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="dueDate">Next Due Date</option>
-              <option value="totalAmount">Total Amount</option>
-              <option value="title">Title (A-Z)</option>
-            </select>
-          </div>
-        </div>
-
-        {/* TAB 1: DASHBOARD VIEW */}
+        {/* ==============================================================
+            TAB 1: MODERN DASHBOARD WITH INVESTMENT-GRADE CHART
+            ============================================================== */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
-            {/* Urgent / Priority Due Payments */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
-              <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500" /> Immediate Upcoming Payments
-              </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-xl relative overflow-hidden group hover:border-emerald-500/50 transition">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl"></div>
+                <span className="text-xs font-semibold text-slate-400">{t('total_unpaid')}</span>
+                <div className="text-2xl font-black tracking-tight text-amber-400 mt-1">{fmt(stats.totalRemaining)}</div>
+                <div className="text-[11px] text-slate-500 mt-2 flex items-center gap-1 font-medium"><TrendingUp className="w-3.5 h-3.5 text-amber-500"/> Total active commitments</div>
+              </div>
 
-              <div className="space-y-3">
-                {installments
-                  .flatMap(item => item.schedule.map(s => ({
-                    ...s,
-                    itemTitle: item.title,
-                    provider: item.provider,
-                    parentId: item.id,
-                    phoneNumber: item.phone_number
-                  })))
-                  .filter(s => s.status !== 'Paid')
-                  .sort((a, b) => a.due_date.localeCompare(b.due_date))
-                  .slice(0, 5)
-                  .map(pay => {
-                    const isOverdue = new Date(pay.due_date) < new Date() && pay.status !== 'Paid';
-                    const config = PROVIDER_CONFIG[pay.provider] || PROVIDER_CONFIG['Other'];
+              <div className="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-xl relative overflow-hidden group hover:border-blue-500/50 transition">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl"></div>
+                <span className="text-xs font-semibold text-slate-400">{t('current_month_due')}</span>
+                <div className="text-2xl font-black tracking-tight text-blue-400 mt-1">{fmt(stats.thisMonthUpcoming)}</div>
+                <div className="text-[11px] text-slate-500 mt-2 flex items-center gap-1 font-medium"><Calendar className="w-3.5 h-3.5 text-blue-500"/> Auto-detected this month</div>
+              </div>
 
-                    return (
-                      <div
-                        key={pay.id}
-                        className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 hover:border-slate-300 transition"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className={`px-2.5 py-1 rounded-lg text-xs font-extrabold ${config.badgeBg}`}>
-                            {pay.provider}
-                          </span>
-                          <div>
-                            <div className="font-semibold text-sm flex items-center gap-2">
-                              {pay.itemTitle}
-                              {pay.phoneNumber && (
-                                <span className="text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300 px-1.5 py-0.5 rounded font-mono">
-                                  {pay.phoneNumber}
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                              <Calendar className="w-3 h-3" /> Due: {pay.due_date}
-                              {isOverdue && <span className="text-red-500 font-bold ml-1 text-[10px] uppercase">Overdue</span>}
-                            </div>
-                          </div>
-                        </div>
+              <div className="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-xl relative overflow-hidden group hover:border-emerald-500/50 transition">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl"></div>
+                <span className="text-xs font-semibold text-slate-400">{t('active_plans')}</span>
+                <div className="text-2xl font-black tracking-tight text-emerald-400 mt-1">{stats.activeCount} <span className="text-sm font-normal text-slate-500">plans</span></div>
+                <div className="text-[11px] text-slate-500 mt-2 flex items-center gap-1 font-medium"><Clock className="w-3.5 h-3.5 text-emerald-500"/> Active installment contracts</div>
+              </div>
 
-                        <div className="flex items-center gap-3">
-                          <span className="font-extrabold text-sm">
-                            {pay.amount.toLocaleString()} {currency}
-                          </span>
-                          <button
-                            onClick={() => togglePaymentStatus(pay.parentId, pay.id)}
-                            className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 transition text-xs font-semibold flex items-center gap-1"
-                          >
-                            <Check className="w-3.5 h-3.5" /> Mark Paid
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                {installments.flatMap(i => i.schedule).filter(s => s.status !== 'Paid').length === 0 && (
-                  <div className="text-center py-6 text-slate-400 text-sm">
-                    🎉 All installments are completely paid off!
-                  </div>
-                )}
+              <div className="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-xl relative overflow-hidden group hover:border-purple-500/50 transition">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl"></div>
+                <span className="text-xs font-semibold text-slate-400">{t('completed_plans')}</span>
+                <div className="text-2xl font-black tracking-tight text-purple-400 mt-1">{stats.completedCount} <span className="text-sm font-normal text-slate-500">plans</span></div>
+                <div className="text-[11px] text-slate-500 mt-2 flex items-center gap-1 font-medium"><CheckCircle className="w-3.5 h-3.5 text-purple-500"/> Fully settled & paid off</div>
               </div>
             </div>
 
-            {/* Active Items Overview */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">
-                  Active Installments Overview ({filteredInstallments.length})
-                </h2>
-                <button
-                  onClick={() => setActiveTab('list')}
-                  className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold hover:underline"
-                >
-                  View All &rarr;
-                </button>
+            {/* INVESTMENT-GRADE INTERACTIVE CHART (AVAILABLE ACROSS ALL SEGMENTATIONS) */}
+            <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                <div>
+                  <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                    <LineChart className="w-5 h-5 text-emerald-400" /> {t('analytics_title')}
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Interactive Multi-Segment Financial & Portfolio Trend Analysis</p>
+                </div>
+                
+                {/* Segmentation Tabs */}
+                <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-bold">
+                  <button onClick={() => setChartSegment('all')} className={`px-3 py-1.5 rounded-lg transition ${chartSegment === 'all' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>{t('chart_tab_all')}</button>
+                  <button onClick={() => setChartSegment('debt')} className={`px-3 py-1.5 rounded-lg transition ${chartSegment === 'debt' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>{t('chart_tab_debt')}</button>
+                  <button onClick={() => setChartSegment('wealth')} className={`px-3 py-1.5 rounded-lg transition ${chartSegment === 'wealth' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>{t('chart_tab_wealth')}</button>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredInstallments.slice(0, 4).map(item => (
-                  <InstallmentCard
-                    key={item.id}
-                    item={item}
-                    currency={currency}
-                    onTogglePayment={togglePaymentStatus}
-                    onEdit={openEditModal}
-                    onDelete={handleDelete}
-                    expanded={expandedId === item.id}
-                    onToggleExpand={() => setExpandedId(expandedId === item.id ? null : item.id)}
-                  />
+              {/* Professional Investment Chart Area */}
+              <div className="bg-slate-950/80 p-6 rounded-2xl border border-slate-800 relative">
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <span className="text-xs text-slate-400">Current Valuation ({chartSegment.toUpperCase()})</span>
+                    <div className="text-2xl font-black text-emerald-400 font-mono mt-0.5">{fmt(investmentChartData.points[investmentChartData.points.length - 1].val)}</div>
+                  </div>
+                  <span className="text-xs font-mono bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full border border-emerald-500/20">Live Market & Cash Flow Sync</span>
+                </div>
+
+                {/* SVG Investment Curve */}
+                <div className="h-56 w-full relative flex items-end">
+                  <svg className="w-full h-full overflow-visible" viewBox="0 0 600 200" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="investmentGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
+                        <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+                    <path
+                      d={`M 0 200 ${investmentChartData.points.map((pt, idx) => {
+                        const x = (idx / (investmentChartData.points.length - 1)) * 600;
+                        const y = 200 - (pt.val / investmentChartData.maxVal) * 160;
+                        return `L ${x} ${y}`;
+                      }).join(' ')} L 600 200 Z`}
+                      fill="url(#investmentGradient)"
+                    />
+                    <path
+                      d={`M ${investmentChartData.points.map((pt, idx) => {
+                        const x = (idx / (investmentChartData.points.length - 1)) * 600;
+                        const y = 200 - (pt.val / investmentChartData.maxVal) * 160;
+                        return `${idx === 0 ? 'M' : 'L'} ${x} ${y}`;
+                      }).join(' ')}`}
+                      fill="none"
+                      stroke="#10b981"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                    />
+                    {investmentChartData.points.map((pt, idx) => {
+                      const x = (idx / (investmentChartData.points.length - 1)) * 600;
+                      const y = 200 - (pt.val / investmentChartData.maxVal) * 160;
+                      return (
+                        <g key={idx} className="group cursor-pointer">
+                          <circle cx={x} cy={y} r="5" className="fill-emerald-400 stroke-slate-950 stroke-2 transition-all group-hover:r-7" />
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </div>
+
+                {/* X Axis Labels */}
+                <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-800/80 text-xs text-slate-400 font-mono">
+                  {investmentChartData.points.map((pt, idx) => (
+                    <span key={idx}>{pt.label}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Immediate Upcoming Payments */}
+            <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl">
+              <h2 className="text-base font-bold mb-4 flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-amber-400"/> {t('immediate_upcoming')}</h2>
+              <div className="space-y-3">
+                {installments.flatMap(i => i.schedule.map(s => ({ ...s, itemTitle: i.title, provider: i.provider, parentId: i.id }))).filter(s => s.status !== 'Paid').sort((a,b)=>a.due_date.localeCompare(b.due_date)).slice(0, 5).map(pay => (
+                  <div key={pay.id} className="flex justify-between items-center p-3.5 rounded-2xl bg-slate-800/40 border border-slate-800 hover:border-slate-700 transition">
+                    <div>
+                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${PROVIDER_CONFIG[pay.provider]?.badgeBg || 'bg-gray-800'}`}>{pay.provider}</span>
+                      <div className="font-bold text-sm mt-1.5 text-slate-200">{pay.itemTitle}</div>
+                      <div className="text-xs text-slate-400 mt-0.5">{t('next_due')}: {pay.due_date}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-black text-slate-100">{fmt(pay.amount)}</div>
+                      <button onClick={() => togglePaymentStatus(pay.parentId, pay.id)} className="mt-1 text-[11px] font-bold px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-xl hover:bg-emerald-500/30 transition">{t('mark_paid')}</button>
+                    </div>
+                  </div>
                 ))}
+                {installments.length === 0 && (
+                  <div className="text-center py-6 text-xs text-slate-500">No active installments found. Click "Add Plan" to begin tracking.</div>
+                )}
               </div>
             </div>
           </div>
         )}
 
-        {/* TAB 2: ALL INSTALLMENTS LIST */}
+        {/* ==============================================================
+            TAB 2: BUDGET, RENT & ASSETS
+            ============================================================== */}
+        {activeTab === 'budget' && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold flex items-center gap-2 text-slate-100"><Wallet className="w-6 h-6 text-blue-400"/> {t('assets_title')}</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Savings Account */}
+              <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl">
+                <div className="text-sm font-bold text-slate-400 mb-2">{t('savings_account')}</div>
+                <div className="text-3xl font-black text-emerald-400">{fmt(assets.savingsSAR)}</div>
+                <p className="text-[11px] text-slate-500 mt-1">Note: Adding to savings automatically logs a transfer transaction from income.</p>
+                <form onSubmit={(e) => { e.preventDefault(); handleAssetUpdate('savings', e.nativeEvent.submitter.value, e.target.amt.value); e.target.reset(); }} className="mt-5 flex gap-2">
+                  <input name="amt" type="number" step="0.01" placeholder={t('amount')} className="flex-1 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-emerald-500" required />
+                  <button type="submit" value="add" className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition">{t('add')}</button>
+                  <button type="submit" value="withdraw" className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition">{t('withdraw')}</button>
+                </form>
+              </div>
+
+              {/* Gold Vault with Real-Time Internet Price Sync */}
+              <div className="bg-gradient-to-br from-amber-950/40 via-slate-900 to-slate-900 border border-amber-500/30 p-6 rounded-3xl shadow-xl relative overflow-hidden">
+                <div className="text-sm font-bold text-amber-400 mb-2 flex justify-between items-center">
+                  <span>{t('gold_vault')}</span>
+                  <span className="flex items-center gap-1.5 text-xs font-mono bg-amber-500/10 text-amber-300 px-2.5 py-1 rounded-full border border-amber-500/20 animate-pulse">
+                    <TrendingUp className="w-3.5 h-3.5"/> {t('live_price')}: {fmt(goldPriceSAR)}/g
+                  </span>
+                </div>
+                <div className="text-3xl font-black text-amber-400 flex items-end gap-2 mt-2">
+                  {assets.goldGrams} <span className="text-sm font-semibold text-slate-400">{t('grams')}</span>
+                  <span className="text-sm font-mono text-slate-400 mb-1 ltr:ml-auto rtl:mr-auto">≈ {fmt(assets.goldGrams * goldPriceSAR)}</span>
+                </div>
+                <form onSubmit={(e) => { e.preventDefault(); handleAssetUpdate('gold', e.nativeEvent.submitter.value, e.target.g.value); e.target.reset(); }} className="mt-5 flex gap-2">
+                  <input name="g" type="number" step="0.1" placeholder={t('grams')} className="flex-1 px-4 py-2.5 bg-slate-800/80 border border-amber-500/30 rounded-xl text-sm focus:outline-none focus:border-amber-500" required />
+                  <button type="submit" value="buy" className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold transition shadow-md">{t('buy')}</button>
+                  <button type="submit" value="sell" className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition">{t('sell')}</button>
+                </form>
+              </div>
+            </div>
+
+            {/* Income & Expenses Budget */}
+            <h2 className="text-xl font-bold flex items-center gap-2 text-slate-100 mt-8"><Coins className="w-6 h-6 text-emerald-400"/> {t('budget_title')}</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="bg-slate-900 border border-emerald-500/30 p-5 rounded-2xl">
+                <div className="text-xs text-emerald-400 font-semibold flex items-center gap-1"><ArrowUpRight className="w-4 h-4"/> {t('total_income')}</div>
+                <div className="text-xl font-black text-emerald-400 mt-1">{fmt(budgetSummary.totalIncome)}</div>
+              </div>
+              <div className="bg-slate-900 border border-rose-500/30 p-5 rounded-2xl">
+                <div className="text-xs text-rose-400 font-semibold flex items-center gap-1"><ArrowDownLeft className="w-4 h-4"/> {t('total_expenses')}</div>
+                <div className="text-xl font-black text-rose-400 mt-1">{fmt(budgetSummary.totalExpenses)}</div>
+              </div>
+              <div className="bg-slate-900 border border-blue-500/30 p-5 rounded-2xl">
+                <div className="text-xs text-blue-400 font-semibold flex items-center gap-1"><Wallet className="w-4 h-4"/> {t('net_balance')}</div>
+                <div className="text-xl font-black text-blue-400 mt-1">{fmt(budgetSummary.netBalance)}</div>
+              </div>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+              <form onSubmit={handleAddBudget} className="flex flex-col sm:flex-row gap-3 mb-6">
+                <input name="desc" type="text" placeholder={t('desc')} className="flex-1 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-emerald-500" required />
+                <input name="amount" type="number" step="0.01" placeholder={`${t('amount')} (${currency})`} className="w-full sm:w-40 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-emerald-500" required />
+                <select name="type" className="px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm font-bold outline-none text-slate-200">
+                  <option value="Income">{t('income')}</option>
+                  <option value="Expense">{t('expense')}</option>
+                </select>
+                <button type="submit" className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition">{t('add_transaction')}</button>
+              </form>
+              <div className="space-y-2.5">
+                {budget.map(b => (
+                  <div key={b.id} className="flex justify-between items-center p-3.5 bg-slate-800/40 rounded-2xl border border-slate-800">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-xl ${b.desc.toLowerCase().includes('rent') || b.desc.toLowerCase().includes('إيجار') ? 'bg-amber-500/10 text-amber-400' : 'bg-slate-700/50 text-slate-300'}`}>
+                        {b.desc.toLowerCase().includes('rent') || b.desc.toLowerCase().includes('إيجار') ? <Home className="w-4 h-4"/> : <Coins className="w-4 h-4"/>}
+                      </div>
+                      <div>
+                        <div className="font-bold text-sm text-slate-200">{b.desc}</div>
+                        <div className="text-xs text-slate-500">{b.date}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className={`font-black ${b.type === 'Income' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {b.type === 'Income' ? '+' : '-'}{fmt(b.amount)}
+                      </div>
+                      <button onClick={() => handleDeleteBudget(b.id)} className="text-slate-500 hover:text-rose-400 transition"><Trash2 className="w-4 h-4"/></button>
+                    </div>
+                  </div>
+                ))}
+                {budget.length === 0 && (
+                  <div className="text-center py-6 text-xs text-slate-500">No income or expense entries recorded yet.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==============================================================
+            TAB 3: ALL PLANS LIST
+            ============================================================== */}
         {activeTab === 'list' && (
           <div className="space-y-4">
-            {filteredInstallments.length === 0 ? (
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center text-slate-400">
-                <ShoppingBag className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p className="text-base font-medium">No installment plans match your search or filter criteria.</p>
-                <p className="text-xs mt-1 text-slate-500">Try changing provider or status dropdown filter.</p>
+             <div className="flex flex-wrap items-center gap-3 mb-4 bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl">
+              <div className="relative flex-1 sm:w-64">
+                <Search className="w-4 h-4 absolute ltr:left-3 rtl:right-3 top-3 text-slate-400" />
+                <input type="text" placeholder={t('search_plans')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full ltr:pl-9 rtl:pr-9 pr-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500" />
               </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-4">
-                {filteredInstallments.map(item => (
-                  <InstallmentCard
-                    key={item.id}
-                    item={item}
-                    currency={currency}
-                    onTogglePayment={togglePaymentStatus}
-                    onEdit={openEditModal}
-                    onDelete={handleDelete}
-                    expanded={expandedId === item.id}
-                    onToggleExpand={() => setExpandedId(expandedId === item.id ? null : item.id)}
-                  />
-                ))}
+              <select value={providerFilter} onChange={(e) => setProviderFilter(e.target.value)} className="bg-slate-800 border border-slate-700 rounded-xl text-xs px-3.5 py-2 text-slate-200">
+                <option value="All">All Providers</option>
+                {Object.keys(PROVIDER_CONFIG).map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="bg-slate-800 border border-slate-700 rounded-xl text-xs px-3.5 py-2 text-slate-200">
+                <option value="All">All Statuses</option>
+                <option value="Active">Active Only</option>
+                <option value="Completed">Completed Only</option>
+              </select>
+            </div>
+
+            {filteredInstallments.map(item => (
+              <InstallmentCard
+                key={item.id} item={item} fmt={fmt} onTogglePayment={togglePaymentStatus} onEdit={openEditModal} onDelete={handleDelete}
+                expanded={expandedId === item.id} onToggleExpand={() => setExpandedId(expandedId === item.id ? null : item.id)} t={t}
+              />
+            ))}
+            {filteredInstallments.length === 0 && (
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-12 text-center text-slate-500">
+                <CreditCard className="w-10 h-10 mx-auto mb-3 opacity-30"/>
+                <p className="text-sm font-bold">No installment plans found</p>
+                <p className="text-xs mt-1">Click the "Add Plan" button in the top right to create your first installment plan.</p>
               </div>
             )}
           </div>
         )}
-
-        {/* TAB 3: MONTHLY FORECAST TIMELINE */}
-        {activeTab === 'calendar' && (
-          <div className="space-y-6">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
-              <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-2 flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-emerald-500" /> Monthly Forecast Timeline
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
-                Monthly commitment view stored in SQLite database.
-              </p>
-
-              <div className="space-y-6">
-                {calendarTimeline.map(monthGroup => (
-                  <div key={monthGroup.key} className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50/50 dark:bg-slate-900/50">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-3 border-b border-slate-200 dark:border-slate-800 gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base font-extrabold text-slate-800 dark:text-slate-100">
-                          {monthGroup.label}
-                        </span>
-                        <span className="text-xs bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full font-medium">
-                          {monthGroup.payments.length} items
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-4 text-xs font-semibold">
-                        <div className="text-slate-500">
-                          Total: <span className="text-slate-900 dark:text-white font-bold">{monthGroup.totalDue.toLocaleString()} {currency}</span>
-                        </div>
-                        <div className="text-emerald-600">
-                          Paid: {monthGroup.paidTotal.toLocaleString()} {currency}
-                        </div>
-                        <div className="text-amber-600">
-                          Pending: {monthGroup.pendingTotal.toLocaleString()} {currency}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {monthGroup.payments.map(pay => {
-                        const config = PROVIDER_CONFIG[pay.provider] || PROVIDER_CONFIG['Other'];
-                        return (
-                          <div
-                            key={pay.id}
-                            className={`p-3 rounded-xl border flex items-center justify-between ${pay.status === 'Paid'
-                              ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/50 opacity-80'
-                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
-                              }`}
-                          >
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded ${config.badgeBg}`}>
-                                  {pay.provider}
-                                </span>
-                                <span className="font-semibold text-xs truncate max-w-[120px]">{pay.title}</span>
-                              </div>
-                              <div className="text-[11px] text-slate-400 mt-1">
-                                Due: {pay.due_date}
-                              </div>
-                            </div>
-
-                            <div className="text-right">
-                              <div className="font-extrabold text-xs">
-                                {pay.amount.toLocaleString()} {currency}
-                              </div>
-                              <button
-                                onClick={() => togglePaymentStatus(pay.parentId, pay.id)}
-                                className={`mt-1 text-[10px] font-bold px-2 py-0.5 rounded transition ${pay.status === 'Paid'
-                                  ? 'bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200'
-                                  : 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 hover:bg-amber-200'
-                                  }`}
-                              >
-                                {pay.status === 'Paid' ? 'Paid ✓' : 'Mark Paid'}
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </main>
 
-      {/* CLOUD SYNC & DB CONFIGURATION MODAL */}
-      {isCloudModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden my-8">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-              <h3 className="font-bold text-base text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <Database className="w-4 h-4 text-emerald-500" /> Database & Cloud Sync Options
-              </h3>
-              <button
-                onClick={() => setIsCloudModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold text-lg"
-              >
-                ✕
-              </button>
+      {/* CLEAR DATABASE CONFIRMATION MODAL WITH WARNING */}
+      {isClearConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
+          <div className="bg-slate-900 border border-rose-500/40 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden p-6 text-center space-y-4">
+            <div className="w-14 h-14 bg-rose-500/10 text-rose-500 rounded-2xl flex items-center justify-center mx-auto border border-rose-500/20">
+              <AlertTriangle className="w-7 h-7" />
             </div>
-
-            <div className="p-6 space-y-4">
-              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 flex items-center gap-3">
-                <HardDrive className="w-6 h-6 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-                <div className="text-xs">
-                  <div className="font-bold text-emerald-800 dark:text-emerald-200">Local SQLite DB Engine Active</div>
-                  <div className="text-emerald-600 dark:text-emerald-400 mt-0.5">
-                    Data persists locally on Android APK, Desktop, and Web via standard SQL schema.
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  Select Cloud Sync Engine
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setCloudSettings({ ...cloudSettings, provider: 'firebase' })}
-                    className={`p-3 rounded-xl border text-xs font-bold text-left transition ${cloudSettings.provider === 'firebase'
-                      ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
-                      : 'border-slate-200 dark:border-slate-800'
-                      }`}
-                  >
-                    🔥 Firebase Firestore
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCloudSettings({ ...cloudSettings, provider: 'supabase' })}
-                    className={`p-3 rounded-xl border text-xs font-bold text-left transition ${cloudSettings.provider === 'supabase'
-                      ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300'
-                      : 'border-slate-200 dark:border-slate-800'
-                      }`}
-                  >
-                    ⚡ Supabase (PostgreSQL)
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-3 pt-2">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                    API Key / Config JSON
-                  </label>
-                  <input
-                    type="text"
-                    placeholder={cloudSettings.provider === 'firebase' ? 'Firebase API Key' : 'Supabase Anon Key'}
-                    value={cloudSettings.apiKey}
-                    onChange={(e) => setCloudSettings({ ...cloudSettings, apiKey: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                    Project URL / Database Endpoint
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="https://your-project.supabase.co"
-                    value={cloudSettings.projectUrl}
-                    onChange={(e) => setCloudSettings({ ...cloudSettings, projectUrl: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2">
-                <button
-                  onClick={() => setIsCloudModalOpen(false)}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold"
-                >
-                  Save Cloud Configuration
-                </button>
-              </div>
+            <h3 className="text-lg font-black text-slate-100">{t('warning_title')}</h3>
+            <p className="text-xs text-slate-400 leading-relaxed">{t('warning_desc')}</p>
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setIsClearConfirmOpen(false)} className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition">{t('cancel')}</button>
+              <button onClick={handleConfirmClearDatabase} className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-rose-600/20">{t('yes_reset')}</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* DYNAMIC MODAL: ADD / EDIT INSTALLMENT */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden my-8">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-              <h3 className="font-bold text-base text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-emerald-500" />
-                {editingItem ? 'Edit Installment Plan' : 'Add New Installment'}
-              </h3>
-              <button
-                onClick={closeModal}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold text-lg"
-              >
-                ✕
-              </button>
+      {/* CLOUD MODAL */}
+      {isCloudModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+              <h3 className="font-bold text-base flex items-center gap-2 text-slate-100"><Database className="w-4 h-4 text-emerald-400" /> Secure SQLite & Sync</h3>
+              <button onClick={() => setIsCloudModalOpen(false)} className="text-slate-400 hover:text-white font-bold text-lg">✕</button>
             </div>
+            <div className="p-6 space-y-4">
+              <div className="p-4 bg-emerald-950/30 rounded-2xl border border-emerald-500/30 flex items-center gap-3">
+                <HardDrive className="w-6 h-6 text-emerald-400 flex-shrink-0" />
+                <div className="text-xs">
+                  <div className="font-bold text-emerald-300">Local SQLite Engine Verified</div>
+                  <div className="text-emerald-500 mt-0.5">Fully secure local persistence across web & Android APK.</div>
+                </div>
+              </div>
+              <div className="flex justify-end pt-2"><button onClick={() => setIsCloudModalOpen(false)} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition">{t('close_settings')}</button></div>
+            </div>
+          </div>
+        </div>
+      )}
 
-            <form onSubmit={handleSubmitForm} className="p-6 space-y-4">
-              {/* Provider Selection */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  Select Provider / Category Type
-                </label>
+      {/* ADD / EDIT MODAL */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden my-8">
+            <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+              <h3 className="font-bold text-base text-slate-100"><Sparkles className="w-4 h-4 text-emerald-400 inline mr-2" /> {editingItem ? t('edit_plan') : t('add_plan')}</h3>
+              <button onClick={closeModal} className="text-slate-400 hover:text-white font-bold text-lg">✕</button>
+            </div>
+            <form onSubmit={handleSubmitForm} className="p-6 space-y-4 text-left" dir="ltr">
+               <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">{t('select_provider')}</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {Object.keys(PROVIDER_CONFIG).map(pKey => (
-                    <button
-                      type="button"
-                      key={pKey}
-                      onClick={() => handleProviderChange(pKey)}
-                      className={`p-2.5 rounded-xl text-xs font-bold text-left border transition ${formData.provider === pKey
-                        ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300'
-                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300'
-                        }`}
-                    >
-                      <div>{pKey}</div>
-                      <div className="text-[10px] font-normal opacity-75">{PROVIDER_CONFIG[pKey].description}</div>
+                    <button type="button" key={pKey} onClick={() => handleProviderChange(pKey)} className={`p-2.5 rounded-xl text-xs font-bold text-left border transition ${formData.provider === pKey ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300' : 'border-slate-800 bg-slate-800/50 text-slate-300 hover:bg-slate-800'}`}>
+                      <div>{pKey}</div><div className="text-[10px] font-normal opacity-75">{PROVIDER_CONFIG[pKey].description}</div>
                     </button>
                   ))}
                 </div>
               </div>
-
-              {/* Title */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  Plan Title / Item Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder={
-                    formData.provider === 'Car Loan'
-                      ? 'e.g. Hyundai Tucson 2025 Smart'
-                      : formData.provider === 'Telecom / Phone Contract'
-                        ? 'e.g. STC Postpaid 4 Plan + iPhone 16 Pro'
-                        : 'e.g. iPhone 16 Pro Max, Sofa Set'
-                  }
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
+                <label className="block text-xs font-semibold text-slate-300 mb-1">{t('plan_title')}</label>
+                <input type="text" required placeholder="e.g. Captiva 2025" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-emerald-500" />
               </div>
-
-              {/* CAR LOAN SPECIFIC DYNAMIC FIELDS */}
+              
               {formData.provider === 'Car Loan' ? (
-                <div className="space-y-3 bg-blue-50/40 dark:bg-blue-950/20 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/40">
-                  <div className="text-xs font-bold text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
-                    <Car className="w-4 h-4" /> Car Loan Details
-                  </div>
+                <div className="space-y-3 bg-blue-950/20 p-4 rounded-2xl border border-blue-900/45">
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Car Make & Model</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Toyota Camry / Hyundai Tucson"
-                        value={formData.carMakeModel}
-                        onChange={(e) => setFormData({ ...formData, carMakeModel: e.target.value })}
-                        className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Bank / Finance Company</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Al Rajhi, SNB Auto Finance"
-                        value={formData.bankLender}
-                        onChange={(e) => setFormData({ ...formData, bankLender: e.target.value })}
-                        className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                      />
-                    </div>
+                    <div><label className="block text-[11px] font-semibold text-slate-300 mb-1">Car Make & Model</label><input type="text" placeholder="e.g. Captiva 2025" value={formData.carMakeModel} onChange={(e) => setFormData({ ...formData, carMakeModel: e.target.value })} className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-100" /></div>
+                    <div><label className="block text-[11px] font-semibold text-slate-300 mb-1">Bank / Finance Company</label><input type="text" placeholder="e.g. Al Faransi Bank" value={formData.bankLender} onChange={(e) => setFormData({ ...formData, bankLender: e.target.value })} className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-100" /></div>
                   </div>
-
                   <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Monthly ({currency}) *</label>
-                      <input
-                        type="number"
-                        required
-                        placeholder="1450"
-                        value={formData.monthlyPayment}
-                        onChange={(e) => setFormData({ ...formData, monthlyPayment: e.target.value })}
-                        className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Contract Months</label>
-                      <select
-                        value={formData.totalSplits}
-                        onChange={(e) => setFormData({ ...formData, totalSplits: Number(e.target.value) })}
-                        className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                      >
-                        <option value={12}>12 Months (1 Year)</option>
-                        <option value={24}>24 Months (2 Years)</option>
-                        <option value={36}>36 Months (3 Years)</option>
-                        <option value={48}>48 Months (4 Years)</option>
-                        <option value={60}>60 Months (5 Years)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Balloon Payment ({currency})</label>
-                      <input
-                        type="number"
-                        placeholder="23000"
-                        value={formData.balloonPayment}
-                        onChange={(e) => setFormData({ ...formData, balloonPayment: e.target.value })}
-                        className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                      />
-                    </div>
+                    <div><label className="block text-[11px] font-semibold text-slate-300 mb-1">Monthly (SAR) *</label><input type="number" placeholder="0.00" required value={formData.monthlyPayment} onChange={(e) => setFormData({ ...formData, monthlyPayment: e.target.value })} className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-100" /></div>
+                    <div><label className="block text-[11px] font-semibold text-slate-300 mb-1">Months</label><select value={formData.totalSplits} onChange={(e) => setFormData({ ...formData, totalSplits: Number(e.target.value) })} className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-100"><option value={12}>12 Months</option><option value={24}>24 Months</option><option value={60}>60 Months</option></select></div>
+                    <div><label className="block text-[11px] font-semibold text-slate-300 mb-1">Balloon Final</label><input type="number" placeholder="0" value={formData.balloonPayment} onChange={(e) => setFormData({ ...formData, balloonPayment: e.target.value })} className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-100" /></div>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">{t('loan_start_date')}</label>
+                    <input type="date" value={formData.startDate} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-100" />
                   </div>
                 </div>
               ) : formData.provider === 'Telecom / Phone Contract' ? (
-                /* TELECOM / PHONE CONTRACT SPECIFIC DYNAMIC FIELDS */
-                <div className="space-y-3 bg-purple-50/40 dark:bg-purple-950/20 p-4 rounded-2xl border border-purple-100 dark:border-purple-900/40">
-                  <div className="text-xs font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
-                    <Smartphone className="w-4 h-4" /> Phone Package & Linked Line Details
-                  </div>
+                <div className="space-y-3 bg-purple-950/20 p-4 rounded-2xl border border-purple-900/40">
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Telecom Provider</label>
-                      <select
-                        value={formData.telecomOperator}
-                        onChange={(e) => setFormData({ ...formData, telecomOperator: e.target.value })}
-                        className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                      >
-                        <option value="STC">STC</option>
-                        <option value="Mobily">Mobily</option>
-                        <option value="Zain">Zain</option>
-                        <option value="Yaqoot">Yaqoot</option>
-                        <option value="Virgin Mobile">Virgin Mobile</option>
-                        <option value="Other">Other Operator</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Mobile / SIM Line #</label>
-                      <input
-                        type="text"
-                        placeholder="+966 5x xxx xxxx"
-                        value={formData.phoneNumber}
-                        onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                        className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                      />
-                    </div>
+                    <div><label className="block text-[11px] font-semibold text-slate-300 mb-1">Provider</label><select value={formData.telecomOperator} onChange={(e) => setFormData({ ...formData, telecomOperator: e.target.value })} className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-100"><option value="STC">STC</option><option value="Mobily">Mobily</option></select></div>
+                    <div><label className="block text-[11px] font-semibold text-slate-300 mb-1">Line #</label><input type="text" placeholder="05xxxxxxxx" value={formData.phoneNumber} onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })} className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-100" /></div>
                   </div>
-
                   <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Main Plan ({currency})</label>
-                      <input
-                        type="number"
-                        placeholder="287.50"
-                        value={formData.mainPlanCost}
-                        onChange={(e) => setFormData({ ...formData, mainPlanCost: e.target.value })}
-                        className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Device Add-on ({currency})</label>
-                      <input
-                        type="number"
-                        placeholder="175.00"
-                        value={formData.deviceCost}
-                        onChange={(e) => setFormData({ ...formData, deviceCost: e.target.value })}
-                        className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Contract Duration</label>
-                      <select
-                        value={formData.totalSplits}
-                        onChange={(e) => setFormData({ ...formData, totalSplits: Number(e.target.value) })}
-                        className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                      >
-                        <option value={12}>12 Months</option>
-                        <option value={18}>18 Months</option>
-                        <option value={24}>24 Months</option>
-                        <option value={36}>36 Months</option>
-                      </select>
-                    </div>
+                    <div><label className="block text-[11px] font-semibold text-slate-300 mb-1">Plan (SAR)</label><input type="number" placeholder="0" value={formData.mainPlanCost} onChange={(e) => setFormData({ ...formData, mainPlanCost: e.target.value })} className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-100" /></div>
+                    <div><label className="block text-[11px] font-semibold text-slate-300 mb-1">Device Add-on</label><input type="number" placeholder="0" value={formData.deviceCost} onChange={(e) => setFormData({ ...formData, deviceCost: e.target.value })} className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-100" /></div>
+                    <div><label className="block text-[11px] font-semibold text-slate-300 mb-1">Duration</label><select value={formData.totalSplits} onChange={(e) => setFormData({ ...formData, totalSplits: Number(e.target.value) })} className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-100"><option value={12}>12 Months</option><option value={24}>24 Months</option></select></div>
                   </div>
                 </div>
               ) : (
-                /* STANDARD TABBY / TAMARA / SNB FLEX FIELDS */
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                        Total Amount ({currency}) *
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        required
-                        placeholder="0.00"
-                        value={formData.totalAmount}
-                        onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                        Category
-                      </label>
-                      <select
-                        value={formData.category}
-                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      >
-                        {CATEGORIES.map(cat => (
-                          <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                      </select>
-                    </div>
+                    <div><label className="block text-xs font-semibold text-slate-300 mb-1">{t('total_amount')}</label><input type="number" step="0.01" placeholder="0.00" required value={formData.totalAmount} onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })} className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm text-slate-100" /></div>
+                    <div><label className="block text-xs font-semibold text-slate-300 mb-1">{t('category')}</label><select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm text-slate-100">{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                   </div>
-
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                        Installment Period (Splits)
-                      </label>
-                      {formData.provider === 'SNB Al Ahli Flex Card' ? (
-                        <div className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center justify-between">
-                          <span>Fixed 4 Months</span>
-                          <span className="text-[10px] bg-green-200 text-green-800 px-1.5 py-0.5 rounded">SNB Rule</span>
-                        </div>
-                      ) : (
-                        <select
-                          value={formData.totalSplits}
-                          onChange={(e) => setFormData({ ...formData, totalSplits: Number(e.target.value) })}
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        >
-                          {Array.from({ length: 21 }, (_, i) => i + 4).map(num => (
-                            <option key={num} value={num}>{num} Months / Splits</option>
-                          ))}
-                        </select>
-                      )}
+                    <div><label className="block text-xs font-semibold text-slate-300 mb-1">{t('period')}</label>
+                      {(() => {
+                        const conf = PROVIDER_CONFIG[formData.provider] || PROVIDER_CONFIG['Other'];
+                        if (conf.isFixedSplits) {
+                          return <div className="w-full px-3.5 py-2 bg-slate-800 rounded-xl text-xs font-bold text-emerald-400">Fixed {conf.minSplits} Months</div>;
+                        }
+                        const minS = conf.minSplits || 1;
+                        const maxS = conf.maxSplits || 24;
+                        return (
+                          <select value={formData.totalSplits} onChange={(e) => setFormData({ ...formData, totalSplits: Number(e.target.value) })} className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm text-slate-100">
+                            {Array.from({ length: maxS - minS + 1 }, (_, i) => i + minS).map(num => <option key={num} value={num}>{num} {lang === 'ar' ? 'أشهر' : 'Months'}</option>)}
+                          </select>
+                        );
+                      })()}
                     </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                        Start / First Payment Date
-                      </label>
-                      <input
-                        type="date"
-                        value={formData.startDate}
-                        onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      />
-                    </div>
+                    <div><label className="block text-xs font-semibold text-slate-300 mb-1">{t('start_date')}</label><input type="date" value={formData.startDate} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm text-slate-100" /></div>
                   </div>
                 </div>
               )}
-
-              {/* Notes */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  Notes / Merchant / Reference Info
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Jarir Order #1234, Jarir online purchase"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
+                <label className="block text-xs font-semibold text-slate-300 mb-1">{t('notes_ref')}</label>
+                <input type="text" placeholder="e.g. Chevy" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm text-slate-100" />
               </div>
-
-              {/* Modal Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-md"
-                >
-                  {editingItem ? 'Save Changes' : 'Create Plan'}
-                </button>
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+                <button type="button" onClick={closeModal} className="px-4 py-2 text-xs text-slate-400 hover:text-white">{t('cancel')}</button>
+                <button type="submit" className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition">{editingItem ? t('save_changes') : t('create_plan')}</button>
               </div>
             </form>
           </div>
@@ -1716,176 +889,64 @@ export default function App() {
 }
 
 // INDIVIDUAL CARD COMPONENT
-function InstallmentCard({ item, currency, onTogglePayment, onEdit, onDelete, expanded, onToggleExpand }) {
+function InstallmentCard({ item, fmt, onTogglePayment, onEdit, onDelete, expanded, onToggleExpand, t }) {
   const providerConfig = PROVIDER_CONFIG[item.provider] || PROVIDER_CONFIG['Other'];
-
   const paidItems = item.schedule.filter(s => s.status === 'Paid');
   const paidCount = paidItems.length;
-  const totalCount = item.schedule.length;
-  const progressPercent = Math.round((paidCount / totalCount) * 100);
-
+  const progressPercent = Math.round((paidCount / item.schedule.length) * 100);
   const paidAmount = paidItems.reduce((acc, curr) => acc + curr.amount, 0);
-  const remainingAmount = item.total_amount - paidAmount;
-
-  const isCompleted = paidCount === totalCount;
   const nextPending = item.schedule.find(s => s.status !== 'Paid');
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 transition shadow-xs hover:border-slate-300 dark:hover:border-slate-700">
-      {/* Card Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl mb-4 hover:border-slate-700 transition">
+      <div className="flex flex-col sm:flex-row justify-between mb-3 gap-2">
         <div className="flex items-center gap-3">
-          <span className={`px-2.5 py-1 rounded-lg text-xs font-extrabold ${providerConfig.badgeBg}`}>
-            {item.provider}
-          </span>
+          <span className={`px-3 py-1 rounded-xl text-xs font-extrabold ${providerConfig.badgeBg}`}>{item.provider}</span>
           <div>
-            <h3 className="font-bold text-base text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              {item.title}
-              {item.provider === 'Car Loan' && <Car className="w-4 h-4 text-blue-500" />}
-              {item.provider === 'Telecom / Phone Contract' && <Smartphone className="w-4 h-4 text-purple-500" />}
-            </h3>
-            <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
-              {item.notes && <span>{item.notes}</span>}
-              {item.phone_number && (
-                <span className="bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 font-mono px-1.5 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1">
-                  <Phone className="w-3 h-3" /> {item.phone_number}
-                </span>
-              )}
-              {item.bank_lender && (
-                <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 font-mono px-1.5 py-0.5 rounded text-[10px] font-semibold">
-                  🏦 {item.bank_lender}
-                </span>
-              )}
-            </div>
+            <h3 className="font-bold text-base text-slate-100">{item.title}</h3>
+            <div className="text-xs text-slate-400 mt-0.5">{item.notes}</div>
           </div>
         </div>
-
-        <div className="flex items-center justify-between sm:justify-end gap-3">
-          <div className="text-right">
-            <div className="text-base font-extrabold text-slate-900 dark:text-white">
-              {item.total_amount.toLocaleString()} <span className="text-xs font-normal text-slate-400">{currency}</span>
-            </div>
-            <div className="text-[11px] text-slate-400">
-              {paidCount} of {totalCount} splits ({progressPercent}%)
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => onEdit(item)}
-              className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition"
-              title="Edit Plan"
-            >
-              <Edit3 className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => onDelete(item.id)}
-              className="p-1.5 text-slate-400 hover:text-red-600 transition"
-              title="Delete Plan"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+        <div className="text-right flex sm:flex-col justify-between items-center sm:items-end">
+          <div className="text-base font-black text-slate-100">{fmt(item.total_amount)}</div>
+          <div className="text-[11px] text-slate-400">{paidCount} of {item.schedule.length} splits ({progressPercent}%)</div>
+          <div className="flex gap-1 mt-1">
+            <button onClick={() => onEdit(item)} className="p-1 text-slate-400 hover:text-white transition"><Edit3 className="w-4 h-4" /></button>
+            <button onClick={() => onDelete(item.id)} className="p-1 text-slate-400 hover:text-rose-400 transition"><Trash2 className="w-4 h-4" /></button>
           </div>
         </div>
       </div>
 
-      {/* Special Breakdown Strip */}
-      {(item.provider === 'Car Loan' || item.provider === 'Telecom / Phone Contract') && (
-        <div className="my-2 p-2 bg-slate-50 dark:bg-slate-800/40 rounded-xl text-[11px] flex flex-wrap gap-3 font-medium text-slate-600 dark:text-slate-300">
-          {item.provider === 'Car Loan' && (
-            <>
-              <span>Monthly: <strong>{item.monthly_payment?.toLocaleString()} {currency}</strong></span>
-              {item.balloon_payment > 0 && <span>Balloon Final: <strong>{item.balloon_payment?.toLocaleString()} {currency}</strong></span>}
-            </>
-          )}
-          {item.provider === 'Telecom / Phone Contract' && (
-            <>
-              {item.main_plan_cost > 0 && <span>Plan: <strong>{item.main_plan_cost} {currency}</strong></span>}
-              {item.device_cost > 0 && <span>Device Add-on: <strong>{item.device_cost} {currency}</strong></span>}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Progress Bar */}
       <div className="space-y-1.5 my-3">
-        <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden flex">
-          <div
-            className={`h-full transition-all duration-500 ${providerConfig.color}`}
-            style={{ width: `${progressPercent}%` }}
-          />
+        <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+          <div className={`h-full transition-all duration-500 ${providerConfig.color}`} style={{ width: `${progressPercent}%` }} />
         </div>
-        <div className="flex justify-between text-[11px] text-slate-400">
-          <span>Paid: {paidAmount.toLocaleString()} {currency}</span>
-          <span>Remaining: {remainingAmount.toLocaleString()} {currency}</span>
+        <div className="flex justify-between text-[11px] text-slate-400 font-medium">
+          <span>Paid: {fmt(paidAmount)}</span><span>Remaining: {fmt(item.total_amount - paidAmount)}</span>
         </div>
       </div>
 
-      {/* Next Payment Banner */}
-      {!isCompleted && nextPending && (
-        <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-2.5 flex items-center justify-between text-xs mt-3">
-          <div className="flex items-center gap-2">
-            <Clock className="w-3.5 h-3.5 text-amber-500" />
-            <span className="text-slate-600 dark:text-slate-300 font-medium">
-              Next Due: <strong className="text-slate-900 dark:text-white">{nextPending.due_date}</strong> ({nextPending.amount.toLocaleString()} {currency})
-            </span>
-          </div>
-          <button
-            onClick={() => onTogglePayment(item.id, nextPending.id)}
-            className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
-          >
-            Pay Now ✓
-          </button>
+      {!item.schedule.every(s => s.status === 'Paid') && nextPending && (
+        <div className="bg-slate-800/60 border border-slate-800 rounded-2xl p-3 flex justify-between items-center text-xs mt-3">
+          <div className="flex items-center gap-2 text-slate-300"><Clock className="w-3.5 h-3.5 text-amber-400" /> Next Due: <strong className="text-slate-100">{nextPending.due_date}</strong> ({fmt(nextPending.amount)})</div>
+          <button onClick={() => onTogglePayment(item.id, nextPending.id)} className="font-bold px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-xl hover:bg-emerald-500/30 transition">{t('pay_now')}</button>
         </div>
       )}
-
-      {isCompleted && (
-        <div className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 rounded-xl p-2.5 text-xs font-semibold text-center mt-3 flex items-center justify-center gap-1.5">
-          <CheckCircle className="w-4 h-4" /> Plan fully paid off!
-        </div>
-      )}
-
-      {/* Accordion Toggle */}
-      <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
-        <button
-          onClick={onToggleExpand}
-          className="text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1 transition"
-        >
-          {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          <span>{expanded ? 'Hide Breakdown Schedule' : 'View Breakdown Schedule'}</span>
-        </button>
-        <span className="text-[10px] text-slate-400 uppercase font-mono">{item.category}</span>
+      
+      <div className="mt-3 pt-3 border-t border-slate-800 flex justify-between items-center">
+        <button onClick={onToggleExpand} className="text-xs font-semibold text-slate-400 hover:text-slate-200 flex gap-1 items-center transition">{expanded ? <ChevronUp className="w-4 h-4"/> : <ChevronDown className="w-4 h-4"/>} {expanded ? t('hide_schedule') : t('view_schedule')}</button>
+        <span className="text-[10px] uppercase font-mono text-slate-500 bg-slate-800 px-2 py-0.5 rounded-md">{item.category}</span>
       </div>
 
-      {/* Expanded Breakdown Table */}
       {expanded && (
-        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
-          <div className="grid grid-cols-12 text-[10px] font-bold text-slate-400 uppercase pb-1 border-b border-slate-100 dark:border-slate-800 px-2">
-            <span className="col-span-1">#</span>
-            <span className="col-span-4">Due Date</span>
-            <span className="col-span-3">Amount</span>
-            <span className="col-span-4 text-right">Action</span>
-          </div>
-
+        <div className="mt-3 space-y-2 pt-2 border-t border-slate-800/60">
           {item.schedule.map((pay, idx) => (
-            <div
-              key={pay.id}
-              className={`grid grid-cols-12 items-center text-xs p-2 rounded-lg transition ${pay.status === 'Paid'
-                ? 'bg-slate-50 dark:bg-slate-800/30 text-slate-400 line-through'
-                : 'bg-white dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 font-medium'
-                }`}
-            >
-              <span className="col-span-1 font-mono text-[10px]">{idx + 1}</span>
+            <div key={pay.id} className={`grid grid-cols-12 text-xs p-2.5 rounded-xl items-center ${pay.status === 'Paid' ? 'bg-slate-800/30 line-through text-slate-500' : 'bg-slate-800/60 text-slate-200 font-medium'}`}>
+              <span className="col-span-1 font-mono text-[10px] text-slate-400">{idx + 1}</span>
               <span className="col-span-4">{pay.due_date}</span>
-              <span className="col-span-3 font-semibold">{pay.amount.toLocaleString()} {currency}</span>
-              <div className="col-span-4 text-right">
-                <button
-                  onClick={() => onTogglePayment(item.id, pay.id)}
-                  className={`px-2 py-1 rounded-md text-[10px] font-bold transition ${pay.status === 'Paid'
-                    ? 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
-                    }`}
-                >
+              <span className="col-span-4 font-bold">{fmt(pay.amount)}</span>
+              <div className="col-span-3 text-right">
+                <button onClick={() => onTogglePayment(item.id, pay.id)} className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${pay.status === 'Paid' ? 'bg-slate-700 text-slate-300' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}>
                   {pay.status === 'Paid' ? 'Paid ✓' : 'Mark Paid'}
                 </button>
               </div>
