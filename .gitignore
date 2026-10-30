@@ -1,0 +1,23 @@
+# Flutter and Dart generated files
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+build/
+
+# Android and Gradle generated files
+android/.gradle/
+android/.kotlin/
+android/**/build/
+android/local.properties
+android/key.properties
+android/**/*.jks
+android/**/*.keystore
+android/**/GeneratedPluginRegistrant.java
+
+# IDE and operating system files
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
