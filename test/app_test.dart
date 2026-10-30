@@ -129,9 +129,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(find.widgetWithText(TextField, 'Name'), planName);
       await tester.enterText(
-          find.widgetWithText(TextField, 'Monthly payment (SAR)'), '10');
-      await tester.enterText(
-          find.widgetWithText(TextField, 'Remaining balance (SAR)'), '240');
+          find.widgetWithText(TextField, 'Plan total amount (SAR)'), '240');
       final monthsLabel = provider == 'Tabby' || provider == 'Tamara'
           ? 'Remaining months (2–24)'
           : 'SNB FLEX remaining months';
@@ -161,10 +159,92 @@ void main() {
     final byName = {for (final item in data.items) item.name: item};
     expect(byName['Tabby short']!.provider, Provider.tabby);
     expect(byName['Tabby short']!.termMonths, 2);
+    expect(byName['Tabby short']!.payment, 120);
+    expect(byName['Tabby short']!.balance, 240);
+    expect(byName['Tabby short']!.totalAmount, 240);
+    expect(byName['Tabby short']!.autoDistribute, isTrue);
     expect(byName['Tamara long']!.provider, Provider.tamara);
     expect(byName['Tamara long']!.termMonths, 24);
+    expect(byName['Tamara long']!.payment, 10);
     expect(byName['SNB four']!.provider, Provider.snbFlex);
     expect(byName['SNB four']!.termMonths, 4);
+    expect(byName['SNB four']!.payment, 60);
+  });
+
+  testWidgets('a car loan uses 59 fixed payments and a final balloon',
+      (tester) async {
+    useTallScreen(tester);
+    await tester.pumpWidget(const AuraWelthApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Vehicles'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Name'), 'Family car');
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Loan total amount (SAR)'), '100000');
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Monthly payment (SAR)'), '1000');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    final data = AppData.fromJson(
+        jsonDecode(savedValues['app']!) as Map<String, dynamic>);
+    final loan = data.items.single;
+    expect(loan.kind, ItemKind.carLoan);
+    expect(loan.termMonths, 60);
+    expect(loan.remainingMonths, 60);
+    expect(loan.totalAmount, 100000);
+    expect(loan.payment, 1000);
+    expect(loan.balloonAmount, 41000);
+  });
+
+  testWidgets('an unpaid car balloon can be extended over selected months',
+      (tester) async {
+    useTallScreen(tester);
+    final nextDue = DateTime.now().add(const Duration(days: 30));
+    savedValues['app'] = jsonEncode({
+      'items': [
+        {
+          'id': 'car',
+          'name': 'Family car',
+          'kind': 'carLoan',
+          'provider': 'carLoan',
+          'monthlyPayment': 1000,
+          'balance': 1200,
+          'totalAmount': 60000,
+          'balloonAmount': 1200,
+          'remainingMonths': 1,
+          'termMonths': 60,
+          'nextDue': nextDue.toIso8601String(),
+          'expiresOn': nextDue.toIso8601String(),
+        }
+      ],
+    });
+
+    await tester.pumpWidget(const AuraWelthApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Plans'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(PopupMenuButton<String>).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Extend balloon'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Additional months (1–120)'), '6');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    final data = AppData.fromJson(
+        jsonDecode(savedValues['app']!) as Map<String, dynamic>);
+    final loan = data.items.single;
+    expect(loan.balloonAmount, 0);
+    expect(loan.balance, 1200);
+    expect(loan.payment, 200);
+    expect(loan.remainingMonths, 6);
   });
 
   testWidgets('a savings account can be created from the dashboard',

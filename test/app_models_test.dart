@@ -56,6 +56,66 @@ void main() {
     expect(plan.afterPayment().balance, 0);
   });
 
+  test('the final calculated installment absorbs cent rounding', () {
+    var plan = const TrackedItem(
+      id: 'tabby',
+      name: 'Tabby plan',
+      kind: ItemKind.installment,
+      provider: Provider.tabby,
+      payment: 333.33,
+      balance: 1000,
+      totalAmount: 1000,
+      autoDistribute: true,
+      remainingMonths: 3,
+      termMonths: 3,
+    );
+
+    expect(plan.monthlyTotal, 333.33);
+    plan = plan.afterPayment();
+    expect(plan.monthlyTotal, 333.33);
+    plan = plan.afterPayment();
+    expect(plan.monthlyTotal, closeTo(333.34, 0.000001));
+    expect(plan.afterPayment().balance, 0);
+  });
+
+  test('car loans reserve a final balloon and allow it to be extended', () {
+    var loan = const TrackedItem(
+      id: 'car',
+      name: 'Car loan',
+      kind: ItemKind.carLoan,
+      provider: Provider.carLoan,
+      payment: 1000,
+      balance: 100000,
+      totalAmount: 100000,
+      balloonAmount: 41000,
+      remainingMonths: 60,
+      termMonths: 60,
+    );
+
+    for (var month = 0; month < 59; month++) {
+      expect(loan.monthlyTotal, 1000);
+      loan = loan.afterPayment();
+    }
+
+    expect(loan.remainingMonths, 1);
+    expect(loan.balance, 41000);
+    expect(loan.monthlyTotal, 41000);
+
+    final extended = loan.copyWith(
+      payment: 20500,
+      balloonAmount: 0,
+      remainingMonths: 2,
+    );
+    expect(extended.monthlyTotal, 20500);
+    expect(extended.afterPayment().balance, 20500);
+    expect(extended.afterPayment().afterPayment().balance, 0);
+
+    final decoded = TrackedItem.fromJson(extended.toJson());
+    expect(decoded.totalAmount, 100000);
+    expect(decoded.balloonAmount, 0);
+    expect(decoded.remainingMonths, 2);
+  });
+
   test('ended contracts retain device payments but stop service fees', () {
     final contract = TrackedItem(
       id: 'ended',

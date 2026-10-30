@@ -13,7 +13,14 @@ is stored on-device through the Android preferences bridge.
 - Installment tracking for Tabby, Tamara, BIRD, SNB FLEX, and custom providers.
   Tabby and Tamara plans support selectable terms from 2 to 24 months.
   SNB FLEX plans are fixed to four months; BIRD and custom plans allow their
-  entered terms.
+  entered terms. New Tabby, Tamara, and SNB FLEX plans calculate monthly
+  payments from the entered total amount and term, adjusting the final payment
+  for rounding.
+- Car loans can be entered as 59 fixed monthly payments plus a calculated
+  final balloon over a 60-month term. An unpaid balloon can be tracked over a
+  user-selected additional term. The tracker divides the balloon evenly and
+  excludes lender fees and interest, so confirm the revised schedule with the
+  bank.
 - Car and device installments, with devices optionally linked to a service
   contract.
 - Mobile, internet, insurance, and other service contracts, including bundled

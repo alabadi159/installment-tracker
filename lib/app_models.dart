@@ -30,6 +30,9 @@ class TrackedItem {
     this.provider = Provider.other,
     this.payment = 0,
     this.balance = 0,
+    this.totalAmount = 0,
+    this.autoDistribute = false,
+    this.balloonAmount = 0,
     this.remainingMonths = 0,
     this.nextDue,
     this.serviceFee = 0,
@@ -51,6 +54,9 @@ class TrackedItem {
   final Provider provider;
   final double payment;
   final double balance;
+  final double totalAmount;
+  final bool autoDistribute;
+  final double balloonAmount;
   final int remainingMonths;
   final DateTime? nextDue;
   final double serviceFee;
@@ -84,6 +90,10 @@ class TrackedItem {
       return (contractCurrent ? serviceFee : 0) +
           (deviceBalance > 0 ? devicePayment.clamp(0, deviceBalance) : 0);
     }
+    if (kind == ItemKind.carLoan && balloonAmount > 0 && remainingMonths <= 1) {
+      return balloonAmount.clamp(0, balance);
+    }
+    if (autoDistribute && remainingMonths <= 1) return balance;
     return payment.clamp(0, balance);
   }
 
@@ -94,6 +104,9 @@ class TrackedItem {
         'provider': provider.name,
         'monthlyPayment': payment,
         'balance': balance,
+        'totalAmount': totalAmount,
+        'autoDistribute': autoDistribute,
+        'balloonAmount': balloonAmount,
         'remainingMonths': remainingMonths,
         'nextDue': nextDue?.toIso8601String(),
         'serviceFee': serviceFee,
@@ -162,6 +175,10 @@ class TrackedItem {
       payment: (json['monthlyPayment'] as num? ?? json['payment'] as num? ?? 0)
           .toDouble(),
       balance: (json['balance'] as num? ?? 0).toDouble(),
+      totalAmount: (json['totalAmount'] as num? ?? json['balance'] as num? ?? 0)
+          .toDouble(),
+      autoDistribute: json['autoDistribute'] as bool? ?? false,
+      balloonAmount: (json['balloonAmount'] as num? ?? 0).toDouble(),
       remainingMonths: legacyRemainingMonths,
       nextDue: nextDue,
       serviceFee: (json['serviceFee'] as num? ?? 0).toDouble(),
@@ -179,6 +196,8 @@ class TrackedItem {
     final amounts = [
       item.payment,
       item.balance,
+      item.totalAmount,
+      item.balloonAmount,
       item.serviceFee,
       item.devicePayment,
       item.deviceBalance,
@@ -200,6 +219,9 @@ class TrackedItem {
     Provider? provider,
     double? payment,
     double? balance,
+    double? totalAmount,
+    bool? autoDistribute,
+    double? balloonAmount,
     int? remainingMonths,
     DateTime? nextDue,
     double? serviceFee,
@@ -220,6 +242,9 @@ class TrackedItem {
         provider: provider ?? this.provider,
         payment: payment ?? this.payment,
         balance: balance ?? this.balance,
+        totalAmount: totalAmount ?? this.totalAmount,
+        autoDistribute: autoDistribute ?? this.autoDistribute,
+        balloonAmount: balloonAmount ?? this.balloonAmount,
         remainingMonths: remainingMonths ?? this.remainingMonths,
         nextDue: nextDue ?? this.nextDue,
         serviceFee: serviceFee ?? this.serviceFee,
@@ -236,12 +261,15 @@ class TrackedItem {
       );
 
   TrackedItem afterPayment() {
+    final isFinalBalloonPayment =
+        kind == ItemKind.carLoan && balloonAmount > 0 && remainingMonths <= 1;
     final nextBalance =
         (balance - monthlyTotal).clamp(0, double.infinity).toDouble();
     final nextDeviceBalance =
         (deviceBalance - devicePayment).clamp(0, double.infinity).toDouble();
     return copyWith(
       balance: nextBalance,
+      balloonAmount: isFinalBalloonPayment ? 0 : balloonAmount,
       deviceBalance: nextDeviceBalance,
       remainingMonths: remainingMonths > 0 ? remainingMonths - 1 : 0,
       nextDue: _addMonths(nextDue ?? DateTime.now(), 1),
