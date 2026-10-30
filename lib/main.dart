@@ -96,6 +96,25 @@ const _arabicStrings = {
   'Provider': 'مقدم الخدمة',
   'Monthly payment (SAR)': 'القسط الشهري (ريال)',
   'Remaining balance (SAR)': 'الرصيد المتبقي (ريال)',
+  'Plan total amount (SAR)': 'إجمالي مبلغ الخطة (ريال)',
+  'Loan total amount (SAR)': 'إجمالي مبلغ القرض (ريال)',
+  'Calculated monthly payment': 'القسط الشهري المحسوب',
+  'Calculated final balloon': 'الدفعة النهائية المحسوبة',
+  'Loan term (months)': 'مدة القرض (أشهر)',
+  'Balloon payment': 'الدفعة النهائية',
+  'Full plan amount is divided across the term; the final payment adjusts for rounding.':
+      'يُقسّم إجمالي الخطة على المدة، ويُعدّل القسط الأخير لمعالجة التقريب.',
+  'Car loan term is fixed at 60 months (59 payments plus a final balloon).':
+      'مدة قرض السيارة ثابتة عند ٦٠ شهراً (٥٩ قسطاً ودفعة نهائية).',
+  'Enter a total amount greater than 59 monthly payments.':
+      'أدخل إجمالي مبلغ أكبر من مجموع ٥٩ قسطاً شهرياً.',
+  'Extend balloon': 'تمديد الدفعة النهائية',
+  'Additional months (1–120)': 'الأشهر الإضافية (١–١٢٠)',
+  'Extension monthly payment': 'القسط الشهري بعد التمديد',
+  'This tracker estimate excludes lender fees and interest. Confirm the revised schedule with your bank.':
+      'هذا تقدير للتتبع ولا يشمل رسوم البنك أو الفوائد. تحقق من الجدول المعدّل مع البنك.',
+  'Enter additional months between 1 and 120.':
+      'أدخل عدداً إضافياً من الأشهر بين ١ و١٢٠.',
   'Remaining months (1–120)': 'الأشهر المتبقية (١–١٢٠)',
   'Remaining months (2–24)': 'الأشهر المتبقية (٢–٢٤)',
   'SNB FLEX remaining months': 'الأشهر المتبقية في SNB FLEX',
@@ -1315,6 +1334,7 @@ class _HomeState extends State<_Home> with WidgetsBindingObserver {
               trailing: PopupMenuButton<String>(
                 onSelected: (choice) {
                   if (choice == 'paid') _markPaid(item);
+                  if (choice == 'extend') _extendBalloon(item);
                   if (choice == 'edit')
                     _addItem(context, item.kind, existing: item);
                   if (choice == 'remove') _removeItem(item);
@@ -1323,6 +1343,13 @@ class _HomeState extends State<_Home> with WidgetsBindingObserver {
                   if (item.kind != ItemKind.gold && item.monthlyTotal > 0)
                     PopupMenuItem(
                         value: 'paid', child: Text(_tr(context, 'Mark paid'))),
+                  if (item.kind == ItemKind.carLoan &&
+                      item.balloonAmount > 0 &&
+                      item.remainingMonths <= 1)
+                    PopupMenuItem(
+                      value: 'extend',
+                      child: Text(_tr(context, 'Extend balloon')),
+                    ),
                   PopupMenuItem(
                       value: 'edit', child: Text(_tr(context, 'Edit'))),
                   PopupMenuItem(
@@ -1352,7 +1379,10 @@ class _HomeState extends State<_Home> with WidgetsBindingObserver {
     final link = item.linkedContractId == null
         ? ''
         : ' · contract ${store.data.items.where((candidate) => candidate.id == item.linkedContractId).firstOrNull?.name ?? 'unlinked'}';
-    return '${_tr(context, _providerTitle(item.provider))}${item.deviceModel.isEmpty ? '' : ' · ${item.deviceModel}'}$link · ${_money(item.payment)}/mo · balance ${_money(item.balance)} · ${item.remainingMonths} months · ${_tr(context, 'Started')} ${_date(item.startDate)} · ${_tr(context, 'Expires')} ${_date(item.expiresOn)} · due ${_date(item.nextDue)}';
+    final balloon = item.kind == ItemKind.carLoan && item.balloonAmount > 0
+        ? ' · ${_tr(context, 'Balloon payment')} ${_money(item.balloonAmount)}'
+        : '';
+    return '${_tr(context, _providerTitle(item.provider))}${item.deviceModel.isEmpty ? '' : ' · ${item.deviceModel}'}$link · ${_money(item.payment)}/mo · balance ${_money(item.balance)}$balloon · ${item.remainingMonths} months · ${_tr(context, 'Started')} ${_date(item.startDate)} · ${_tr(context, 'Expires')} ${_date(item.expiresOn)} · due ${_date(item.nextDue)}';
   }
 
   Widget _vehicles() {
@@ -1493,6 +1523,33 @@ class _HomeState extends State<_Home> with WidgetsBindingObserver {
     }).toList();
     await store
         .save(store.data.copyWith(items: updatedItems, entries: entries));
+  }
+
+  Future<void> _extendBalloon(TrackedItem item) async {
+    final months = await showDialog<int>(
+      context: context,
+      builder: (context) => _BalloonExtensionDialog(
+        amount: item.balloonAmount,
+      ),
+    );
+    if (months == null) return;
+
+    final amount = item.balloonAmount;
+    final payment = ((amount / months) * 100).round() / 100;
+    final firstDue = item.nextDue ?? DateTime.now();
+    final lastDue = _addMonths(firstDue, months - 1);
+    final extended = item.copyWith(
+      balance: amount,
+      payment: payment,
+      balloonAmount: 0,
+      remainingMonths: months,
+      expiresOn: lastDue,
+    );
+    await store.save(store.data.copyWith(
+      items: store.data.items
+          .map((current) => current.id == item.id ? extended : current)
+          .toList(),
+    ));
   }
 
   Future<void> _removeItem(TrackedItem item) async {
@@ -2305,6 +2362,94 @@ class _SavingsTransactionDialogState extends State<_SavingsTransactionDialog> {
   }
 }
 
+class _BalloonExtensionDialog extends StatefulWidget {
+  const _BalloonExtensionDialog({required this.amount});
+
+  final double amount;
+
+  @override
+  State<_BalloonExtensionDialog> createState() =>
+      _BalloonExtensionDialogState();
+}
+
+class _BalloonExtensionDialogState extends State<_BalloonExtensionDialog> {
+  final months = TextEditingController(text: '12');
+  String? error;
+
+  @override
+  void dispose() {
+    months.dispose();
+    super.dispose();
+  }
+
+  int get _months => int.tryParse(months.text) ?? 0;
+
+  double get _payment {
+    final count = _months;
+    return count > 0 ? ((widget.amount / count) * 100).round() / 100 : 0;
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: Text(_tr(context, 'Extend balloon')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${_tr(context, 'Balloon payment')}: ${_money(widget.amount)}',
+            ),
+            TextField(
+              controller: months,
+              decoration: InputDecoration(
+                labelText: _tr(context, 'Additional months (1–120)'),
+              ),
+              keyboardType: TextInputType.number,
+              onChanged: (_) => setState(() => error = null),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(
+                '${_tr(context, 'Extension monthly payment')}: ${_money(_payment)}',
+              ),
+            ),
+            Text(
+              _tr(
+                context,
+                'This tracker estimate excludes lender fees and interest. Confirm the revised schedule with your bank.',
+              ),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            if (error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  _tr(context, error!),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(_tr(context, 'Cancel')),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (_months < 1 || _months > 120 || _payment <= 0) {
+                setState(() {
+                  error = 'Enter additional months between 1 and 120.';
+                });
+                return;
+              }
+              Navigator.pop(context, _months);
+            },
+            child: Text(_tr(context, 'Save')),
+          ),
+        ],
+      );
+}
+
 class _GoldTradeDialog extends StatefulWidget {
   const _GoldTradeDialog({
     required this.type,
@@ -2497,6 +2642,14 @@ class _ItemDialog extends StatefulWidget {
 
 class _ItemDialogState extends State<_ItemDialog> {
   late final name = TextEditingController(text: widget.existing?.name ?? '');
+  late final totalAmount = TextEditingController(
+    text: widget.existing == null
+        ? ''
+        : (widget.existing!.totalAmount > 0
+                ? widget.existing!.totalAmount
+                : widget.existing!.balance)
+            .toString(),
+  );
   late final payment =
       TextEditingController(text: widget.existing?.payment.toString() ?? '');
   late final balance =
@@ -2521,11 +2674,44 @@ class _ItemDialogState extends State<_ItemDialog> {
   String? formError;
   late DateTime startDate;
   DateTime? expiresOn;
+  bool expirationManuallySet = false;
+
+  bool get _usesAmountDistribution =>
+      widget.kind == ItemKind.installment &&
+      (provider == Provider.tabby ||
+          provider == Provider.tamara ||
+          provider == Provider.snbFlex);
+
+  bool get _isNewAmountPlan =>
+      _usesAmountDistribution && widget.existing == null;
+
+  bool get _isNewCarLoan =>
+      widget.kind == ItemKind.carLoan && widget.existing == null;
+
+  double _roundMoney(double value) =>
+      value.isFinite && value.abs() <= double.maxFinite / 100
+          ? (value * 100).round() / 100
+          : value;
+
+  double get _calculatedMonthlyPayment {
+    final amount = _isNewAmountPlan ? _value(totalAmount) : _value(balance);
+    final term = _int(months);
+    return term > 0 ? _roundMoney(amount / term) : 0;
+  }
+
+  double get _calculatedBalloon =>
+      _roundMoney(_value(totalAmount) - _value(payment) * 59);
 
   @override
   void initState() {
     super.initState();
     provider = widget.existing?.provider ?? _providerFor(widget.kind);
+    if (widget.existing == null && provider == Provider.snbFlex) {
+      months.text = '4';
+    }
+    if (widget.kind == ItemKind.carLoan && widget.existing == null) {
+      months.text = '60';
+    }
     due = widget.existing?.nextDue ??
         _addMonths(DateUtils.dateOnly(DateTime.now()), 1);
     startDate =
@@ -2535,21 +2721,17 @@ class _ItemDialogState extends State<_ItemDialog> {
             ? null
             : _addMonths(
                 startDate, widget.existing?.termMonths ?? _int(months)));
+    expirationManuallySet = widget.existing != null;
     contractEnd = widget.existing?.contractEnd;
     contractType = widget.existing?.contractType ?? 'Mobile';
     linkedContractId = widget.existing?.linkedContractId;
-    if (widget.existing == null && provider == Provider.snbFlex) {
-      months.text = '4';
-    }
-    if (provider == Provider.snbFlex) {
-      payment.text = (_value(balance) / _snbPaymentPeriods).toStringAsFixed(2);
-    }
   }
 
   @override
   void dispose() {
     for (final controller in [
       name,
+      totalAmount,
       payment,
       balance,
       months,
@@ -2569,7 +2751,14 @@ class _ItemDialogState extends State<_ItemDialog> {
   int _int(TextEditingController controller) =>
       int.tryParse(controller.text) ?? 0;
 
-  int get _snbPaymentPeriods => _int(months) > 0 ? _int(months) : 4;
+  void _updateDerivedExpiration() {
+    if (!expirationManuallySet &&
+        widget.kind != ItemKind.serviceContract &&
+        widget.kind != ItemKind.gold &&
+        _int(months) > 0) {
+      expiresOn = _addMonths(startDate, _int(months));
+    }
+  }
 
   bool get _hasOptionalProviderTerm =>
       provider == Provider.tabby || provider == Provider.tamara;
@@ -2593,31 +2782,40 @@ class _ItemDialogState extends State<_ItemDialog> {
     final devicePaymentValue = _value(device);
     final deviceBalanceValue = _value(deviceBalance);
     final balanceValue = _value(balance);
-    final paymentValue = provider == Provider.snbFlex
-        ? balanceValue / _snbPaymentPeriods
-        : _value(payment);
+    final totalAmountValue = _value(totalAmount);
+    final paymentValue =
+        _usesAmountDistribution ? _calculatedMonthlyPayment : _value(payment);
     final term = _int(months);
     final minimumTerm =
         _hasOptionalProviderTerm && widget.existing == null ? 2 : 1;
     final maximumTerm = _hasOptionalProviderTerm ? 24 : 120;
-    final validTerm = provider == Provider.snbFlex
-        ? widget.existing == null
-            ? term == 4
-            : term >= 1 && term <= 4
-        : term >= minimumTerm && term <= maximumTerm;
+    final validTerm = _isNewCarLoan
+        ? term == 60
+        : provider == Provider.snbFlex
+            ? widget.existing == null
+                ? term == 4
+                : term >= 1 && term <= 4
+            : term >= minimumTerm && term <= maximumTerm;
     final validMoney = [
       gramsValue,
       serviceValue,
       devicePaymentValue,
       deviceBalanceValue,
       balanceValue,
+      totalAmountValue,
       paymentValue,
     ].every((value) => value.isFinite && value >= 0);
+    final amountToSchedule =
+        _isNewAmountPlan || _isNewCarLoan ? totalAmountValue : balanceValue;
 
     if (!nameIsValid) {
       formError = 'Enter a name.';
     } else if (!validMoney) {
       formError = 'Amounts must be valid non-negative numbers.';
+    } else if (_isNewCarLoan && !_calculatedBalloon.isFinite) {
+      formError = 'Amounts must be valid non-negative numbers.';
+    } else if (_isNewCarLoan && _calculatedBalloon <= 0) {
+      formError = 'Enter a total amount greater than 59 monthly payments.';
     } else if (widget.kind == ItemKind.gold && gramsValue <= 0) {
       formError = 'Gold weight must be greater than zero.';
     } else if (widget.kind == ItemKind.serviceContract &&
@@ -2634,7 +2832,7 @@ class _ItemDialogState extends State<_ItemDialog> {
       formError = 'A bundled device payment needs a remaining balance.';
     } else if (widget.kind != ItemKind.gold &&
         widget.kind != ItemKind.serviceContract &&
-        (balanceValue <= 0 || paymentValue <= 0 || !validTerm)) {
+        (amountToSchedule <= 0 || paymentValue <= 0 || !validTerm)) {
       formError = provider == Provider.snbFlex
           ? 'SNB FLEX plans must be four months.'
           : _hasOptionalProviderTerm
@@ -2679,48 +2877,82 @@ class _ItemDialogState extends State<_ItemDialog> {
                           child: Text(_tr(context, _providerTitle(p)))))
                       .toList(),
                   onChanged: (value) => setState(() {
-                    final previousProvider = provider;
                     provider = value ?? provider;
-                    if (provider == Provider.snbFlex) {
-                      if (widget.existing == null) months.text = '4';
-                      payment.text = (_value(balance) / _snbPaymentPeriods)
-                          .toStringAsFixed(2);
-                    } else if (previousProvider == Provider.snbFlex &&
+                    if (provider == Provider.snbFlex &&
                         widget.existing == null) {
                       months.text = '4';
+                      _updateDerivedExpiration();
                     }
                   }),
                 ),
-                _field(payment, 'Monthly payment (SAR)',
-                    readOnly: provider == Provider.snbFlex),
-                _field(balance, 'Remaining balance (SAR)',
-                    onChanged: provider == Provider.snbFlex
-                        ? (value) {
-                            final amount = double.tryParse(value);
-                            payment.text = amount == null
-                                ? ''
-                                : (amount / _snbPaymentPeriods)
-                                    .toStringAsFixed(2);
-                          }
-                        : null),
+                if (_usesAmountDistribution) ...[
+                  _field(
+                    totalAmount,
+                    'Plan total amount (SAR)',
+                    readOnly: !_isNewAmountPlan,
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  if (!_isNewAmountPlan)
+                    _field(
+                      balance,
+                      'Remaining balance (SAR)',
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      '${_tr(context, 'Calculated monthly payment')}: ${_money(_calculatedMonthlyPayment)}',
+                    ),
+                  ),
+                ] else if (_isNewCarLoan) ...[
+                  _field(
+                    totalAmount,
+                    'Loan total amount (SAR)',
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  _field(
+                    payment,
+                    'Monthly payment (SAR)',
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      '${_tr(context, 'Calculated final balloon')}: ${_money(_calculatedBalloon)}',
+                    ),
+                    subtitle: Text(_tr(context,
+                        'Car loan term is fixed at 60 months (59 payments plus a final balloon).')),
+                  ),
+                  _field(
+                    months,
+                    'Loan term (months)',
+                    numeric: true,
+                    readOnly: true,
+                  ),
+                ] else ...[
+                  _field(payment, 'Monthly payment (SAR)'),
+                  _field(balance, 'Remaining balance (SAR)'),
+                ],
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Text(
-                    '${_tr(context, 'Record only the current unpaid balance for a plan. Previous paid installments are not counted again.')} '
+                    '${_tr(context, _isNewAmountPlan ? 'Full plan amount is divided across the term; the final payment adjusts for rounding.' : 'Record only the current unpaid balance for a plan. Previous paid installments are not counted again.')} '
                     '${_tr(context, 'Set the next payment date to the next unpaid installment.')}',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
-                _field(
-                  months,
-                  _hasOptionalProviderTerm
-                      ? 'Remaining months (2–24)'
-                      : provider == Provider.snbFlex
-                          ? 'SNB FLEX remaining months'
-                          : 'Remaining months (1–120)',
-                  numeric: true,
-                  readOnly: provider == Provider.snbFlex,
-                ),
+                if (!_isNewCarLoan)
+                  _field(
+                    months,
+                    _hasOptionalProviderTerm
+                        ? 'Remaining months (2–24)'
+                        : provider == Provider.snbFlex
+                            ? 'SNB FLEX remaining months'
+                            : 'Remaining months (1–120)',
+                    numeric: true,
+                    readOnly: provider == Provider.snbFlex,
+                    onChanged: (_) => setState(_updateDerivedExpiration),
+                  ),
                 if (provider == Provider.snbFlex)
                   Align(
                     alignment: Alignment.centerLeft,
@@ -2750,7 +2982,12 @@ class _ItemDialogState extends State<_ItemDialog> {
                       firstDate: DateTime(1950),
                       lastDate: DateTime(2100),
                     );
-                    if (picked != null) setState(() => startDate = picked);
+                    if (picked != null) {
+                      setState(() {
+                        startDate = picked;
+                        _updateDerivedExpiration();
+                      });
+                    }
                   },
                 ),
                 ListTile(
@@ -2766,7 +3003,12 @@ class _ItemDialogState extends State<_ItemDialog> {
                         firstDate: DateTime(1950),
                         lastDate: DateTime(2100),
                       );
-                      if (picked != null) setState(() => expiresOn = picked);
+                      if (picked != null) {
+                        setState(() {
+                          expiresOn = picked;
+                          expirationManuallySet = true;
+                        });
+                      }
                     },
                     icon: const Icon(Icons.event_busy),
                   ),
@@ -2887,6 +3129,11 @@ class _ItemDialogState extends State<_ItemDialog> {
                 return;
               }
               final old = widget.existing;
+              final savedBalance = widget.kind == ItemKind.gold
+                  ? 0.0
+                  : _isNewAmountPlan || _isNewCarLoan
+                      ? _value(totalAmount)
+                      : _value(balance);
               Navigator.pop(
                   context,
                   TrackedItem(
@@ -2895,10 +3142,18 @@ class _ItemDialogState extends State<_ItemDialog> {
                     name: name.text.trim(),
                     kind: widget.kind,
                     provider: provider,
-                    payment: provider == Provider.snbFlex
-                        ? _value(balance) / _snbPaymentPeriods
+                    payment: _usesAmountDistribution
+                        ? _calculatedMonthlyPayment
                         : _value(payment),
-                    balance: widget.kind == ItemKind.gold ? 0 : _value(balance),
+                    balance: savedBalance,
+                    totalAmount: old?.totalAmount ??
+                        (_isNewAmountPlan || _isNewCarLoan
+                            ? _value(totalAmount)
+                            : savedBalance),
+                    autoDistribute: _usesAmountDistribution,
+                    balloonAmount: _isNewCarLoan
+                        ? _calculatedBalloon
+                        : old?.balloonAmount ?? 0,
                     remainingMonths: _int(months),
                     nextDue: due,
                     serviceFee: _value(service),
